@@ -44,9 +44,10 @@ class SlideUpDismissActivity : AppCompatActivity() {
         }
 
         val slideUp = SlideUpBuilder(slideView)
-            .withStartState(SlideUp.State.SHOWED)
-            .withSlideDirection(SlideUp.SlideDirection.UP)
-            .withListeners(object : SlideUp.Listener.Events {
+            .slideToParent()
+            .SlideDirection(SlideUp.SlideDirection.UP)
+            .StartState(SlideUp.State.SHOWED)
+            .listeners(object : SlideUp.Listener.Events {
                 override fun onVisibilityChanged(visibility: Int) {
                     Log.d("zhangfei", "onVisibilityChanged, visibility:$visibility")
                 }

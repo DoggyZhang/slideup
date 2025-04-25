@@ -54,8 +54,14 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
     public enum SlideDirection {
         UP,
         DOWN,
-        LEFT,
-        RIGHT
+//        LEFT,
+//        RIGHT
+    }
+
+    public enum SlideTo{
+        SELF, //滑动自身的高度
+        PARENT, //滑动到父布局
+        SPECIFY //指定滑动距离
     }
 
 
@@ -72,7 +78,7 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
     private SlideUpBuilder mBuilder;
 
     private VerticalTouchConsumer mVerticalTouchConsumer;
-    private HorizontalTouchConsumer mHorizontalTouchConsumer;
+//    private HorizontalTouchConsumer mHorizontalTouchConsumer;
 
     private AnimationProcessor mAnimationProcessor;
 
@@ -122,20 +128,21 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
                         switch (mBuilder.mSlideDirection) {
                             case UP:
                                 mBuilder.mSliderView.setPivotY(0);
+
                                 setTouchableAreaVertical();
                                 break;
                             case DOWN:
                                 mBuilder.mSliderView.setPivotY(0);
                                 setTouchableAreaVertical();
                                 break;
-                            case LEFT:
-                                mBuilder.mSliderView.setPivotX(0);
-                                setTouchableAreaHorizontal();
-                                break;
-                            case RIGHT:
-                                mBuilder.mSliderView.setPivotX(mViewWidth);
-                                setTouchableAreaHorizontal();
-                                break;
+//                            case LEFT:
+//                                mBuilder.mSliderView.setPivotX(0);
+//                                setTouchableAreaHorizontal();
+//                                break;
+//                            case RIGHT:
+//                                mBuilder.mSliderView.setPivotX(mViewWidth);
+//                                setTouchableAreaHorizontal();
+//                                break;
                         }
                         createConsumers();
                         updateToCurrentState();
@@ -163,7 +170,7 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
     private void createConsumers() {
         createAnimation();
         mVerticalTouchConsumer = new VerticalTouchConsumer(mBuilder, this, mAnimationProcessor);
-        mHorizontalTouchConsumer = new HorizontalTouchConsumer(mBuilder, this, mAnimationProcessor);
+//        mHorizontalTouchConsumer = new HorizontalTouchConsumer(mBuilder, this, mAnimationProcessor);
     }
 
     private void updateToCurrentState() {
@@ -237,7 +244,7 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
      * @param autoSlideDuration <b>(default - <b color="#EF6C00">300</b>)</b>
      */
     public void setAutoSlideDuration(int autoSlideDuration) {
-        mBuilder.withAutoSlideDuration(autoSlideDuration);
+        mBuilder.autoSlideDuration(autoSlideDuration);
         mAnimationProcessor.paramsChanged();
     }
 
@@ -254,7 +261,7 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
      * @param touchableArea <b>(default - <b color="#EF6C00">300dp</b>)</b>
      */
     public void setTouchableAreaDp(float touchableArea) {
-        mBuilder.withTouchableAreaDp(touchableArea);
+        mBuilder.touchableAreaDp(touchableArea);
     }
 
     /**
@@ -263,7 +270,7 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
      * @param touchableArea <b>(default - <b color="#EF6C00">300dp</b>)</b>
      */
     public void setTouchableAreaPx(float touchableArea) {
-        mBuilder.withTouchableAreaPx(touchableArea);
+        mBuilder.touchableAreaPx(touchableArea);
     }
 
     /**
@@ -323,7 +330,7 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
      * @param enabled <b>(default - <b color="#EF6C00">false</b>)</b>
      */
     public void setLoggingEnabled(boolean enabled) {
-        mBuilder.withLoggingEnabled(enabled);
+        mBuilder.loggingEnabled(enabled);
     }
 
     /**
@@ -339,7 +346,7 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
      * @param enabled <b>(default - <b color="#EF6C00">true</b>)</b>
      */
     public void setGesturesEnabled(boolean enabled) {
-        mBuilder.withGesturesEnabled(enabled);
+        mBuilder.gesturesEnabled(enabled);
     }
 
     /**
@@ -369,7 +376,7 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
      * @param interpolator <b>(default - <b color="#EF6C00">Decelerate interpolator</b>)</b>
      */
     public void setInterpolator(TimeInterpolator interpolator) {
-        mBuilder.withInterpolator(interpolator);
+        mBuilder.interpolator(interpolator);
         mAnimationProcessor.paramsChanged();
     }
 
@@ -386,7 +393,7 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
      * @param hide <b>(default - <b color="#EF6C00">false</b>)</b>
      */
     public void setHideKeyboardWhenDisplayed(boolean hide) {
-        mBuilder.withHideSoftInputWhenDisplayed(hide);
+        mBuilder.hideSoftInputWhenDisplayed(hide);
     }
 
     /**
@@ -452,30 +459,30 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
                     mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationY(), mBuilder.mSliderView.getHeight());
                 }
                 break;
-            case LEFT:
-                if (immediately) {
-                    if (mBuilder.mSliderView.getWidth() > 0) {
-                        mBuilder.mSliderView.setTranslationX(-mViewWidth);
-                        notifyPercentChanged(100);
-                    } else {
-                        mBuilder.mStartState = State.HIDDEN;
-                    }
-                } else {
-                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), mBuilder.mSliderView.getHeight());
-                }
-                break;
-            case RIGHT:
-                if (immediately) {
-                    if (mBuilder.mSliderView.getWidth() > 0) {
-                        mBuilder.mSliderView.setTranslationX(mViewWidth);
-                        notifyPercentChanged(100);
-                    } else {
-                        mBuilder.mStartState = State.HIDDEN;
-                    }
-                } else {
-                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), mBuilder.mSliderView.getHeight());
-                }
-                break;
+//            case LEFT:
+//                if (immediately) {
+//                    if (mBuilder.mSliderView.getWidth() > 0) {
+//                        mBuilder.mSliderView.setTranslationX(-mViewWidth);
+//                        notifyPercentChanged(100);
+//                    } else {
+//                        mBuilder.mStartState = State.HIDDEN;
+//                    }
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), mBuilder.mSliderView.getHeight());
+//                }
+//                break;
+//            case RIGHT:
+//                if (immediately) {
+//                    if (mBuilder.mSliderView.getWidth() > 0) {
+//                        mBuilder.mSliderView.setTranslationX(mViewWidth);
+//                        notifyPercentChanged(100);
+//                    } else {
+//                        mBuilder.mStartState = State.HIDDEN;
+//                    }
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), mBuilder.mSliderView.getHeight());
+//                }
+//                break;
         }
     }
 
@@ -505,29 +512,29 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
                     mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationY(), 0);
                 }
                 break;
-            case LEFT:
-                if (immediately) {
-                    if (mBuilder.mSliderView.getWidth() > 0) {
-                        mBuilder.mSliderView.setTranslationX(0);
-                        notifyPercentChanged(0);
-                    } else {
-                        mBuilder.mStartState = State.SHOWED;
-                    }
-                } else {
-                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), 0);
-                }
-            case RIGHT:
-                if (immediately) {
-                    if (mBuilder.mSliderView.getWidth() > 0) {
-                        mBuilder.mSliderView.setTranslationX(0);
-                        notifyPercentChanged(0);
-                    } else {
-                        mBuilder.mStartState = State.SHOWED;
-                    }
-                } else {
-                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), 0);
-                }
-                break;
+//            case LEFT:
+//                if (immediately) {
+//                    if (mBuilder.mSliderView.getWidth() > 0) {
+//                        mBuilder.mSliderView.setTranslationX(0);
+//                        notifyPercentChanged(0);
+//                    } else {
+//                        mBuilder.mStartState = State.SHOWED;
+//                    }
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), 0);
+//                }
+//            case RIGHT:
+//                if (immediately) {
+//                    if (mBuilder.mSliderView.getWidth() > 0) {
+//                        mBuilder.mSliderView.setTranslationX(0);
+//                        notifyPercentChanged(0);
+//                    } else {
+//                        mBuilder.mStartState = State.SHOWED;
+//                    }
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), 0);
+//                }
+//                break;
         }
     }
 
@@ -546,12 +553,12 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
             case DOWN:
                 consumed = mVerticalTouchConsumer.slideDown(v, event);
                 break;
-            case LEFT:
-                consumed = mHorizontalTouchConsumer.consumeStartToEnd(v, event);
-                break;
-            case RIGHT:
-                consumed = mHorizontalTouchConsumer.consumeEndToStart(v, event);
-                break;
+//            case LEFT:
+//                consumed = mHorizontalTouchConsumer.consumeStartToEnd(v, event);
+//                break;
+//            case RIGHT:
+//                consumed = mHorizontalTouchConsumer.consumeEndToStart(v, event);
+//                break;
             default:
                 throw new IllegalArgumentException("You are using not supported gravity");
         }
@@ -566,47 +573,47 @@ public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpda
         float value = (float) animation.getAnimatedValue();
         switch (mBuilder.mSlideDirection) {
             case UP:
-                onAnimationUpdateTopToBottom(value);
+                onAnimationSlideUp(value);
                 break;
             case DOWN:
-                onAnimationUpdateBottomToTop(value);
+                onAnimationSlideDown(value);
                 break;
-            case LEFT:
-                onAnimationUpdateStartToEnd(value);
-                break;
-            case RIGHT:
-                onAnimationUpdateEndToStart(value);
-                break;
+//            case LEFT:
+//                onAnimationUpdateStartToEnd(value);
+//                break;
+//            case RIGHT:
+//                onAnimationUpdateEndToStart(value);
+//                break;
         }
     }
 
-    private void onAnimationUpdateTopToBottom(float value) {
+    private void onAnimationSlideUp(float value) {
         mBuilder.mSliderView.setTranslationY(-value);
         float visibleDistance = mBuilder.mSliderView.getTop() - mBuilder.mSliderView.getY();
         float percents = (visibleDistance) * 100 / mViewHeight;
         notifyPercentChanged(percents);
     }
 
-    private void onAnimationUpdateBottomToTop(float value) {
+    private void onAnimationSlideDown(float value) {
         mBuilder.mSliderView.setTranslationY(value);
         float visibleDistance = mBuilder.mSliderView.getY() - mBuilder.mSliderView.getTop();
         float percents = (visibleDistance) * 100 / mViewHeight;
         notifyPercentChanged(percents);
     }
 
-    private void onAnimationUpdateStartToEnd(float value) {
-        mBuilder.mSliderView.setTranslationX(-value);
-        float visibleDistance = mBuilder.mSliderView.getX() - getStart();
-        float percents = (visibleDistance) * 100 / -mViewWidth;
-        notifyPercentChanged(percents);
-    }
-
-    private void onAnimationUpdateEndToStart(float value) {
-        mBuilder.mSliderView.setTranslationX(value);
-        float visibleDistance = mBuilder.mSliderView.getX() - getStart();
-        float percents = (visibleDistance) * 100 / mViewWidth;
-        notifyPercentChanged(percents);
-    }
+//    private void onAnimationUpdateStartToEnd(float value) {
+//        mBuilder.mSliderView.setTranslationX(-value);
+//        float visibleDistance = mBuilder.mSliderView.getX() - getStart();
+//        float percents = (visibleDistance) * 100 / -mViewWidth;
+//        notifyPercentChanged(percents);
+//    }
+//
+//    private void onAnimationUpdateEndToStart(float value) {
+//        mBuilder.mSliderView.setTranslationX(value);
+//        float visibleDistance = mBuilder.mSliderView.getX() - getStart();
+//        float percents = (visibleDistance) * 100 / mViewWidth;
+//        notifyPercentChanged(percents);
+//    }
 
     private int getStart() {
         if (mBuilder.mIsRTL) {

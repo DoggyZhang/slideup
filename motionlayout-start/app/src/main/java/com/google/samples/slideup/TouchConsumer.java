@@ -26,8 +26,8 @@ class TouchConsumer {
     TouchConsumer(SlideUpBuilder builder, LoggerNotifier notifier,
                   AnimationProcessor animationProcessor){
         mBuilder = builder;
-        mAnimationProcessor = animationProcessor;
         mNotifier = notifier;
+        mAnimationProcessor = animationProcessor;
     }
     
     int getEnd(){

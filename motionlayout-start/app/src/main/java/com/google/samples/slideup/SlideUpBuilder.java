@@ -3,10 +3,13 @@ package com.google.samples.slideup;
 import android.animation.TimeInterpolator;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.animation.DecelerateInterpolator;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,6 +34,9 @@ public final class SlideUpBuilder {
     boolean mHideKeyboard = false;
     TimeInterpolator mInterpolator = new DecelerateInterpolator();
     View mAlsoScrollView;
+    SlideUp.SlideTo mSlideTo = SlideUp.SlideTo.SELF;
+    int mSpecifySlideTo = 0;
+
 
     /**
      * <p>Construct a SlideUp by passing the view or his child to use for the generation</p>
@@ -47,7 +53,7 @@ public final class SlideUpBuilder {
      *
      * @param startState <b>(default - <b color="#EF6C00">{@link SlideUp.State#HIDDEN}</b>)</b>
      */
-    public SlideUpBuilder withStartState(@NonNull SlideUp.State startState) {
+    public SlideUpBuilder StartState(@NonNull SlideUp.State startState) {
         if (!mStateRestored) {
             mStartState = startState;
         }
@@ -57,7 +63,7 @@ public final class SlideUpBuilder {
     /**
      * <p>Define slide direction, <b>this parameter affects the motion vector slider</b></p>
      */
-    public SlideUpBuilder withSlideDirection(@NonNull SlideUp.SlideDirection direction) {
+    public SlideUpBuilder SlideDirection(@NonNull SlideUp.SlideDirection direction) {
         if (!mStateRestored) {
             mSlideDirection = direction;
         }
@@ -69,7 +75,7 @@ public final class SlideUpBuilder {
      *
      * @param listeners {@link List} of listeners
      */
-    public SlideUpBuilder withListeners(@NonNull List<SlideUp.Listener> listeners) {
+    public SlideUpBuilder listeners(@NonNull List<SlideUp.Listener> listeners) {
         if (listeners != null) {
             mListeners.addAll(listeners);
         }
@@ -81,10 +87,10 @@ public final class SlideUpBuilder {
      *
      * @param listeners array of listeners
      */
-    public SlideUpBuilder withListeners(@NonNull SlideUp.Listener... listeners) {
+    public SlideUpBuilder listeners(@NonNull SlideUp.Listener... listeners) {
         List<SlideUp.Listener> listeners_list = new ArrayList<>();
         Collections.addAll(listeners_list, listeners);
-        return withListeners(listeners_list);
+        return listeners(listeners_list);
     }
 
     /**
@@ -92,7 +98,7 @@ public final class SlideUpBuilder {
      *
      * @param enabled <b>(default - <b color="#EF6C00">false</b>)</b>
      */
-    public SlideUpBuilder withLoggingEnabled(boolean enabled) {
+    public SlideUpBuilder loggingEnabled(boolean enabled) {
         if (!mStateRestored) {
             mDebug = enabled;
         }
@@ -104,7 +110,7 @@ public final class SlideUpBuilder {
      *
      * @param duration <b>(default - <b color="#EF6C00">300</b>)</b>
      */
-    public SlideUpBuilder withAutoSlideDuration(int duration) {
+    public SlideUpBuilder autoSlideDuration(int duration) {
         if (!mStateRestored) {
             mAutoSlideDuration = duration;
         }
@@ -116,7 +122,7 @@ public final class SlideUpBuilder {
      *
      * @param area <b>(default - <b color="#EF6C00">300dp</b>)</b>
      */
-    public SlideUpBuilder withTouchableAreaPx(float area) {
+    public SlideUpBuilder touchableAreaPx(float area) {
         if (!mStateRestored) {
             mTouchableArea = area;
         }
@@ -128,7 +134,7 @@ public final class SlideUpBuilder {
      *
      * @param area <b>(default - <b color="#EF6C00">300dp</b>)</b>
      */
-    public SlideUpBuilder withTouchableAreaDp(float area) {
+    public SlideUpBuilder touchableAreaDp(float area) {
         if (!mStateRestored) {
             mTouchableArea = area * mDensity;
         }
@@ -140,7 +146,7 @@ public final class SlideUpBuilder {
      *
      * @param enabled <b>(default - <b color="#EF6C00">true</b>)</b>
      */
-    public SlideUpBuilder withGesturesEnabled(boolean enabled) {
+    public SlideUpBuilder gesturesEnabled(boolean enabled) {
         mGesturesEnabled = enabled;
         return this;
     }
@@ -150,7 +156,7 @@ public final class SlideUpBuilder {
      *
      * @param hide <b>(default - <b color="#EF6C00">false</b>)</b>
      */
-    public SlideUpBuilder withHideSoftInputWhenDisplayed(boolean hide) {
+    public SlideUpBuilder hideSoftInputWhenDisplayed(boolean hide) {
         if (!mStateRestored) {
             mHideKeyboard = hide;
         }
@@ -162,7 +168,7 @@ public final class SlideUpBuilder {
      *
      * @param interpolator <b>(default - <b color="#EF6C00">Decelerate interpolator</b>)</b>
      */
-    public SlideUpBuilder withInterpolator(TimeInterpolator interpolator) {
+    public SlideUpBuilder interpolator(TimeInterpolator interpolator) {
         mInterpolator = interpolator;
         return this;
     }
@@ -170,7 +176,7 @@ public final class SlideUpBuilder {
     /**
      * @param savedState parameters will be restored from this bundle, if it contains them
      */
-    public SlideUpBuilder withSavedState(@Nullable Bundle savedState) {
+    public SlideUpBuilder savedState(@Nullable Bundle savedState) {
         restoreParams(savedState);
         return this;
     }
@@ -181,9 +187,54 @@ public final class SlideUpBuilder {
      *
      * @param alsoScrollView the other view that will trigger the slide events
      */
-    public SlideUpBuilder withSlideFromOtherView(@Nullable View alsoScrollView) {
+    public SlideUpBuilder slideFromOtherView(@Nullable View alsoScrollView) {
         mAlsoScrollView = alsoScrollView;
         return this;
+    }
+
+    public SlideUpBuilder slideToSelf() {
+        mSlideTo = SlideUp.SlideTo.SELF;
+        return this;
+    }
+
+    public SlideUpBuilder slideToParent() {
+        mSlideTo = SlideUp.SlideTo.PARENT;
+        return this;
+    }
+
+    public SlideUpBuilder slideTo(int length) {
+        mSlideTo = SlideUp.SlideTo.SPECIFY;
+        mSpecifySlideTo = length;
+        return this;
+    }
+
+
+    public float getSlideLength() {
+        switch (mSlideTo) {
+            case SELF:
+                return mSliderView.getHeight();
+            case PARENT:
+                switch (mSlideDirection) {
+                    case UP: {
+                        ViewParent parent = mSliderView.getParent();
+                        if (parent != null) {
+                            return mSliderView.getTop();
+                        }
+                        return 0;
+                    }
+                    case DOWN: {
+                        ViewParent parent = mSliderView.getParent();
+                        if (parent != null) {
+                            return ((ViewGroup) parent).getHeight() - mSliderView.getBottom();
+                        }
+                        return 0;
+                    }
+                }
+                break;
+            case SPECIFY:
+                return mSpecifySlideTo;
+        }
+        return 0;
     }
 
     /**

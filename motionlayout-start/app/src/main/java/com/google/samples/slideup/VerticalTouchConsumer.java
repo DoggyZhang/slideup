@@ -1,5 +1,7 @@
 package com.google.samples.slideup;
 
+import static java.lang.Math.abs;
+
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -30,10 +32,12 @@ class VerticalTouchConsumer extends TouchConsumer {
             case MotionEvent.ACTION_MOVE:
                 float difference = event.getRawY() - mStartPositionY;
                 float moveTo = mViewStartPositionY + difference;
-                float percents = moveTo * 100 / mBuilder.mSliderView.getHeight();
+                float slideLength = mBuilder.getSlideLength();
+                float percents = moveTo * 100 / slideLength;
                 calculateDirection(event);
 
-                Log.d("zhangfei", "slideDown(ACTION_MOVE) -> difference: " + difference + ", moveTo:" + moveTo + ", mCanSlide:" + mCanSlide);
+                Log.d("zhangfei", "slideDown(ACTION_MOVE) -> difference: " + difference + ", mCanSlide:" + mCanSlide);
+                Log.d("zhangfei", "                          moveTo:" + moveTo + ", slideLength:" + slideLength + ", percent:" + percents);
                 if (mBuilder.mSlideDirection == SlideUp.SlideDirection.DOWN && moveTo > 0 && mCanSlide) {
                     mNotifier.notifyPercentChanged(percents);
                     mBuilder.mSliderView.setTranslationY(moveTo);
@@ -75,10 +79,12 @@ class VerticalTouchConsumer extends TouchConsumer {
             case MotionEvent.ACTION_MOVE:
                 float difference = event.getRawY() - mStartPositionY;
                 float moveTo = mViewStartPositionY + difference;
-                float percents = moveTo * 100 / -mBuilder.mSliderView.getHeight();
+                float slideLength = mBuilder.getSlideLength();
+                float percents = abs(moveTo) * 100 / slideLength;
                 calculateDirection(event);
 
-                Log.d("zhangfei", "slideUp(ACTION_MOVE) -> difference: " + difference + ", moveTo:" + moveTo + ", mCanSlide:" + mCanSlide);
+                Log.d("zhangfei", "slideUp(ACTION_MOVE) -> difference: " + difference + ", mCanSlide:" + mCanSlide);
+                Log.d("zhangfei", "                        moveTo:" + moveTo + ", slideLength:" + slideLength + ", percent:" + percents);
                 if (mBuilder.mSlideDirection == SlideUp.SlideDirection.UP && moveTo < 0 && mCanSlide) {
                     mNotifier.notifyPercentChanged(percents);
                     mBuilder.mSliderView.setTranslationY(moveTo);
