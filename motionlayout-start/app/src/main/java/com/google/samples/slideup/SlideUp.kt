@@ -1,710 +1,621 @@
-package com.google.samples.slideup;
+package com.google.samples.slideup
 
-import static android.view.Gravity.BOTTOM;
-import static android.view.Gravity.END;
-import static android.view.Gravity.START;
-import static android.view.Gravity.TOP;
-import static android.view.View.GONE;
-import static android.view.View.VISIBLE;
+import android.animation.Animator
+import android.animation.TimeInterpolator
+import android.animation.ValueAnimator
+import android.animation.ValueAnimator.AnimatorUpdateListener
+import android.content.Context
+import android.os.Bundle
+import android.util.Log
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.View.OnTouchListener
+import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
+import androidx.annotation.IntDef
 
-import android.animation.Animator;
-import android.animation.TimeInterpolator;
-import android.animation.ValueAnimator;
-import android.content.Context;
-import android.os.Bundle;
-import android.os.IBinder;
-import android.util.Log;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.inputmethod.InputMethodManager;
-
-import androidx.annotation.IntDef;
-import androidx.annotation.NonNull;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-
-public class SlideUp implements View.OnTouchListener, ValueAnimator.AnimatorUpdateListener, Animator.AnimatorListener, LoggerNotifier {
-    private final static String TAG = SlideUp.class.getSimpleName();
-
-    final static String KEY_START_DIRECTION = TAG + "_start_direction";
-    final static String KEY_DEBUG = TAG + "_debug";
-    final static String KEY_TOUCHABLE_AREA = TAG + "_touchable_area";
-    final static String KEY_STATE = TAG + "_state";
-    final static String KEY_AUTO_SLIDE_DURATION = TAG + "_auto_slide_duration";
-    final static String KEY_HIDE_SOFT_INPUT = TAG + "_hide_soft_input";
-    final static String KEY_STATE_SAVED = TAG + "_state_saved";
-
+class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTouchListener, AnimatorUpdateListener, Animator.AnimatorListener, LoggerNotifier {
     /**
-     * <p>Available start states</p>
+     *
+     * Available start states
      */
-    public enum State {
-
+    enum class State {
         /**
-         * State hidden is equal {@link View#GONE}
+         * State hidden is equal [View.GONE]
          */
         HIDDEN,
 
         /**
-         * State showed is equal {@link View#VISIBLE}
+         * State showed is equal [View.VISIBLE]
          */
         SHOWED
     }
 
-    public enum SlideDirection {
+    enum class SlideDirection {
         UP,
-        DOWN,
-//        LEFT,
-//        RIGHT
+        DOWN,  //        LEFT,
+        //        RIGHT
     }
 
-    public enum SlideTo{
-        SELF, //滑动自身的高度
-        PARENT, //滑动到父布局
+    enum class SlideTo {
+        SELF,  //滑动自身的高度
+        PARENT,  //滑动到父布局
         SPECIFY //指定滑动距离
     }
 
 
-    @IntDef(value = {START, END, TOP, BOTTOM})
-    @Retention(RetentionPolicy.SOURCE)
-    @interface StartVector {
-    }
+    @IntDef(value = [Gravity.START, Gravity.END, Gravity.TOP, Gravity.BOTTOM])
+    @Retention(AnnotationRetention.SOURCE)
+    internal annotation class StartVector
 
-    private State mCurrentState;
+    private var mCurrentState: State? = null
 
-    private float mViewHeight;
-    private float mViewWidth;
+    private var mViewHeight = 0f
+    private var mViewWidth = 0f
 
-    private SlideUpBuilder mBuilder;
+    private var mVerticalTouchConsumer: VerticalTouchConsumer? = null
 
-    private VerticalTouchConsumer mVerticalTouchConsumer;
-//    private HorizontalTouchConsumer mHorizontalTouchConsumer;
-
-    private AnimationProcessor mAnimationProcessor;
+    //    private HorizontalTouchConsumer mHorizontalTouchConsumer;
+    private var mAnimationProcessor: AnimationProcessor = AnimationProcessor(mBuilder, this, this)
 
     /**
-     * <p>Interface to listen to all handled events taking place in the slider</p>
+     *
+     * Interface to listen to all handled events taking place in the slider
      */
-    public interface Listener {
-
-        interface Slide extends Listener {
-
+    interface Listener {
+        interface Slide : Listener {
             /**
-             * @param percent percents of complete slide <b color="#EF6C00">(100 = HIDDEN, 0 = SHOWED)</b>
+             * @param percent percents of complete slide **(100 = HIDDEN, 0 = SHOWED)**
              */
-            void onSlide(float percent);
+            fun onSlide(percent: Float)
         }
 
-        interface Visibility extends Listener {
-
+        interface Visibility : Listener {
             /**
-             * @param visibility (<b>GONE</b> or <b>VISIBLE</b>)
+             * @param visibility (**GONE** or **VISIBLE**)
              */
-            void onVisibilityChanged(int visibility);
+            fun onVisibilityChanged(visibility: Int)
         }
 
-        interface Events extends Visibility, Slide {
-        }
+        interface Events : Visibility, Slide
     }
 
-    SlideUp(SlideUpBuilder builder) {
-        mBuilder = builder;
-        init();
+    init {
+        init()
     }
 
-    private void init() {
-        mBuilder.mSliderView.setOnTouchListener(this);
-        if (mBuilder.mAlsoScrollView != null) {
-            mBuilder.mAlsoScrollView.setOnTouchListener(this);
-        }
-        createAnimation();
-        mBuilder.mSliderView.getViewTreeObserver().addOnGlobalLayoutListener(
-                new OnGlobalLayoutSingleListener(mBuilder.mSliderView, new Runnable() {
-                    @Override
-                    public void run() {
+    private fun init() {
+        mBuilder.mSliderView.setOnTouchListener(this)
+        mBuilder.mAlsoScrollView?.setOnTouchListener(this)
+        mBuilder.mSliderView.viewTreeObserver.addOnGlobalLayoutListener(
+            OnGlobalLayoutSingleListener(mBuilder.mSliderView, Runnable {
+                mViewHeight = mBuilder.mSliderView.height.toFloat()
+                mViewWidth = mBuilder.mSliderView.width.toFloat()
+                when (mBuilder.mSlideDirection) {
+                    SlideDirection.UP -> {
+                        mBuilder.mSliderView.pivotY = 0f
 
-                        mViewHeight = mBuilder.mSliderView.getHeight();
-                        mViewWidth = mBuilder.mSliderView.getWidth();
-                        switch (mBuilder.mSlideDirection) {
-                            case UP:
-                                mBuilder.mSliderView.setPivotY(0);
-
-                                setTouchableAreaVertical();
-                                break;
-                            case DOWN:
-                                mBuilder.mSliderView.setPivotY(0);
-                                setTouchableAreaVertical();
-                                break;
-//                            case LEFT:
-//                                mBuilder.mSliderView.setPivotX(0);
-//                                setTouchableAreaHorizontal();
-//                                break;
-//                            case RIGHT:
-//                                mBuilder.mSliderView.setPivotX(mViewWidth);
-//                                setTouchableAreaHorizontal();
-//                                break;
-                        }
-                        createConsumers();
-                        updateToCurrentState();
+                        setTouchableAreaVertical()
                     }
-                }));
-        updateToCurrentState();
+
+                    SlideDirection.DOWN -> {
+                        mBuilder.mSliderView.pivotY = 0f
+                        setTouchableAreaVertical()
+                    }
+                }
+                createConsumers()
+                updateToCurrentState()
+            })
+        )
+        updateToCurrentState()
     }
 
-    private void setTouchableAreaHorizontal() {
-        if (mBuilder.mTouchableArea == 0) {
-            mBuilder.mTouchableArea = mViewWidth; //(float) Math.ceil(mViewWidth / 10);
+    private fun setTouchableAreaHorizontal() {
+        if (mBuilder.mTouchableArea == 0f) {
+            mBuilder.mTouchableArea = mViewWidth //(float) Math.ceil(mViewWidth / 10);
         }
     }
 
-    private void setTouchableAreaVertical() {
-        if (mBuilder.mTouchableArea == 0) {
-            mBuilder.mTouchableArea = mViewHeight; //(float) Math.ceil(mViewHeight / 10);
+    private fun setTouchableAreaVertical() {
+        if (mBuilder.mTouchableArea == 0f) {
+            mBuilder.mTouchableArea = mViewHeight //(float) Math.ceil(mViewHeight / 10);
         }
     }
 
-    private void createAnimation() {
-        mAnimationProcessor = new AnimationProcessor(mBuilder, this, this);
+    private fun createConsumers() {
+        mVerticalTouchConsumer = VerticalTouchConsumer(mBuilder, this, mAnimationProcessor, slideLength)
+        //        mHorizontalTouchConsumer = new HorizontalTouchConsumer(mBuilder, this, mAnimationProcessor);
     }
 
-    private void createConsumers() {
-        createAnimation();
-        mVerticalTouchConsumer = new VerticalTouchConsumer(mBuilder, this, mAnimationProcessor);
-//        mHorizontalTouchConsumer = new HorizontalTouchConsumer(mBuilder, this, mAnimationProcessor);
-    }
+    val slideLength: Float
+        get() {
+            when (mBuilder.mSlideTo) {
+                SlideTo.SELF -> return mViewHeight
+                SlideTo.PARENT -> when (mBuilder.mSlideDirection) {
+                    SlideDirection.UP -> {
+                        val parent = mBuilder.mSliderView.parent
+                        if (parent != null) {
+                            return mBuilder.mSliderView.top.toFloat()
+                        }
+                        return 0f
+                    }
 
-    private void updateToCurrentState() {
-        switch (mBuilder.mStartState) {
-            case HIDDEN:
-                hideImmediately();
-                break;
-            case SHOWED:
-                showImmediately();
-                break;
-            default:
-                break;
+                    SlideDirection.DOWN -> {
+                        val parent = mBuilder.mSliderView.parent
+                        if (parent != null) {
+                            return ((parent as ViewGroup).height - mBuilder.mSliderView.bottom).toFloat()
+                        }
+                        return 0f
+                    }
+                }
+
+                SlideTo.SPECIFY -> return mBuilder.mSpecifySlideTo.toFloat()
+            }
+            return 0f
+        }
+
+    private fun updateToCurrentState() {
+        when (mBuilder.mStartState) {
+            State.HIDDEN -> hideImmediately()
+            State.SHOWED -> showImmediately()
+            else -> {}
         }
     }
 
     //region public interface
-
     /**
-     * <p>Trying hide soft input from window</p>
      *
-     * @see InputMethodManager#hideSoftInputFromWindow(IBinder, int)
-     */
-    public void hideSoftInput() {
-        ((InputMethodManager) mBuilder.mSliderView.getContext().getSystemService(Context.INPUT_METHOD_SERVICE))
-                .hideSoftInputFromWindow(mBuilder.mSliderView.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
-    }
-
-    /**
-     * <p>Trying show soft input to window</p>
+     * Trying hide soft input from window
      *
-     * @see InputMethodManager#showSoftInput(View, int)
+     * @see InputMethodManager.hideSoftInputFromWindow
      */
-    public void showSoftInput() {
-        ((InputMethodManager) mBuilder.mSliderView.getContext().getSystemService(Context.INPUT_METHOD_SERVICE))
-                .showSoftInput(mBuilder.mSliderView, 0);
+    fun hideSoftInput() {
+        (mBuilder.mSliderView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+            .hideSoftInputFromWindow(mBuilder.mSliderView.windowToken, InputMethodManager.HIDE_NOT_ALWAYS)
     }
 
     /**
-     * <p>Returns the visibility status for this view.</p>
      *
-     * @return true if view have status {@link View#VISIBLE}
-     */
-    public boolean isVisible() {
-        return mBuilder.mSliderView.getVisibility() == VISIBLE;
-    }
-
-    /**
-     * <p>Add Listener which will be used in combination with this SlideUp</p>
-     */
-    public void addSlideListener(@NonNull Listener listener) {
-        mBuilder.mListeners.add(listener);
-    }
-
-    /**
-     * <p>Remove Listener which was used in combination with this SlideUp</p>
-     */
-    public void removeSlideListener(@NonNull Listener listener) {
-        mBuilder.mListeners.remove(listener);
-    }
-
-    /**
-     * <p>Returns typed view which was used as slider</p>
-     */
-    public <T extends View> T getSliderView() {
-        return (T) mBuilder.mSliderView;
-    }
-
-    /**
-     * <p>Set duration of animation (whenever you use {@link #hide()} or {@link #show()} methods)</p>
+     * Trying show soft input to window
      *
-     * @param autoSlideDuration <b>(default - <b color="#EF6C00">300</b>)</b>
+     * @see InputMethodManager.showSoftInput
      */
-    public void setAutoSlideDuration(int autoSlideDuration) {
-        mBuilder.autoSlideDuration(autoSlideDuration);
-        mAnimationProcessor.paramsChanged();
+    fun showSoftInput() {
+        (mBuilder.mSliderView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+            .showSoftInput(mBuilder.mSliderView, 0)
     }
 
-    /**
-     * <p>Returns duration of animation (whenever you use {@link #hide()} or {@link #show()} methods)</p>
-     */
-    public float getAutoSlideDuration() {
-        return mBuilder.mAutoSlideDuration;
-    }
+    val isVisible: Boolean
+        /**
+         *
+         * Returns the visibility status for this view.
+         *
+         * @return true if view have status [View.VISIBLE]
+         */
+        get() = mBuilder.mSliderView.visibility == View.VISIBLE
 
     /**
-     * <p>Set touchable area <b>(in dp)</b> for interaction</p>
      *
-     * @param touchableArea <b>(default - <b color="#EF6C00">300dp</b>)</b>
+     * Add Listener which will be used in combination with this SlideUp
      */
-    public void setTouchableAreaDp(float touchableArea) {
-        mBuilder.touchableAreaDp(touchableArea);
+    fun addSlideListener(listener: Listener) {
+        mBuilder.mListeners.add(listener)
     }
 
     /**
-     * <p>Set touchable area <b>(in px)</b> for interaction</p>
      *
-     * @param touchableArea <b>(default - <b color="#EF6C00">300dp</b>)</b>
+     * Remove Listener which was used in combination with this SlideUp
      */
-    public void setTouchableAreaPx(float touchableArea) {
-        mBuilder.touchableAreaPx(touchableArea);
+    fun removeSlideListener(listener: Listener) {
+        mBuilder.mListeners.remove(listener)
     }
 
     /**
-     * <p>Returns touchable area <b>(in dp)</b> for interaction</p>
-     */
-    public float getTouchableAreaDp() {
-        return mBuilder.mTouchableArea / mBuilder.mDensity;
-    }
-
-    /**
-     * <p>Returns touchable area <b>(in px)</b> for interaction</p>
-     */
-    public float getTouchableAreaPx() {
-        return mBuilder.mTouchableArea;
-    }
-
-    /**
-     * <p>Returns running status of animation</p>
      *
-     * @return true if animation is running
+     * Returns typed view which was used as slider
      */
-    public boolean isAnimationRunning() {
-        return mAnimationProcessor.isAnimationRunning();
+    fun <T : View?> getSliderView(): T? {
+        return mBuilder.mSliderView as T
     }
 
     /**
-     * <p>Show view with animation</p>
-     */
-    public void show() {
-        show(false);
-    }
-
-    /**
-     * <p>Hide view with animation</p>
-     */
-    public void hide() {
-        hide(false);
-    }
-
-    /**
-     * <p>Hide view without animation</p>
-     */
-    public void hideImmediately() {
-        hide(true);
-    }
-
-    /**
-     * <p>Show view without animation</p>
-     */
-    public void showImmediately() {
-        show(true);
-    }
-
-    /**
-     * <p>Turning on/off debug logging</p>
      *
-     * @param enabled <b>(default - <b color="#EF6C00">false</b>)</b>
-     */
-    public void setLoggingEnabled(boolean enabled) {
-        mBuilder.loggingEnabled(enabled);
-    }
-
-    /**
-     * <p>Returns current status of debug logging</p>
-     */
-    public boolean isLoggingEnabled() {
-        return mBuilder.mDebug;
-    }
-
-    /**
-     * <p>Turning on/off gestures</p>
+     * Set duration of animation (whenever you use [.hide] or [.show] methods)
      *
-     * @param enabled <b>(default - <b color="#EF6C00">true</b>)</b>
+     * @param autoSlideDuration **(default - **300**)**
      */
-    public void setGesturesEnabled(boolean enabled) {
-        mBuilder.gesturesEnabled(enabled);
+    fun setAutoSlideDuration(autoSlideDuration: Int) {
+        mBuilder.autoSlideDuration(autoSlideDuration)
+        mAnimationProcessor.paramsChanged()
     }
 
-    /**
-     * <p>Returns current status of gestures</p>
-     */
-    public boolean isGesturesEnabled() {
-        return mBuilder.mGesturesEnabled;
-    }
+    val autoSlideDuration: Float
+        /**
+         *
+         * Returns duration of animation (whenever you use [.hide] or [.show] methods)
+         */
+        get() = mBuilder.mAutoSlideDuration.toFloat()
+
+    var touchableAreaDp: Float
+        /**
+         *
+         * Returns touchable area **(in dp)** for interaction
+         */
+        get() = mBuilder.mTouchableArea / mBuilder.mDensity
+        /**
+         *
+         * Set touchable area **(in dp)** for interaction
+         *
+         * @param touchableArea **(default - **300dp**)**
+         */
+        set(touchableArea) {
+            mBuilder.touchableAreaDp(touchableArea)
+        }
+
+    var touchableAreaPx: Float
+        /**
+         *
+         * Returns touchable area **(in px)** for interaction
+         */
+        get() = mBuilder.mTouchableArea
+        /**
+         *
+         * Set touchable area **(in px)** for interaction
+         *
+         * @param touchableArea **(default - **300dp**)**
+         */
+        set(touchableArea) {
+            mBuilder.touchableAreaPx(touchableArea)
+        }
+
+    val isAnimationRunning: Boolean
+        /**
+         *
+         * Returns running status of animation
+         *
+         * @return true if animation is running
+         */
+        get() = mAnimationProcessor.isAnimationRunning
 
     /**
-     * <p>Returns current interpolator</p>
-     */
-    public TimeInterpolator getInterpolator() {
-        return mBuilder.mInterpolator;
-    }
-
-    /**
-     * <p>Returns gravity which used in combination with this SlideUp</p>
-     */
-    public SlideUp.SlideDirection getSlideDirection() {
-        return mBuilder.mSlideDirection;
-    }
-
-    /**
-     * <p>Sets interpolator for animation (whenever you use {@link #hide()} or {@link #show()} methods)</p>
      *
-     * @param interpolator <b>(default - <b color="#EF6C00">Decelerate interpolator</b>)</b>
+     * Show view with animation
      */
-    public void setInterpolator(TimeInterpolator interpolator) {
-        mBuilder.interpolator(interpolator);
-        mAnimationProcessor.paramsChanged();
+    fun show() {
+        show(false)
     }
 
     /**
-     * <p>Returns current behavior of soft input</p>
-     */
-    public boolean isHideKeyboardWhenDisplayed() {
-        return mBuilder.mHideKeyboard;
-    }
-
-    /**
-     * <p>Sets behavior of soft input</p>
      *
-     * @param hide <b>(default - <b color="#EF6C00">false</b>)</b>
+     * Hide view with animation
      */
-    public void setHideKeyboardWhenDisplayed(boolean hide) {
-        mBuilder.hideSoftInputWhenDisplayed(hide);
+    fun hide() {
+        hide(false)
     }
 
     /**
-     * <p>Toggle current state with animation</p>
+     *
+     * Hide view without animation
      */
-    public void toggle() {
-        if (isVisible()) {
-            hide();
+    fun hideImmediately() {
+        hide(true)
+    }
+
+    /**
+     *
+     * Show view without animation
+     */
+    fun showImmediately() {
+        show(true)
+    }
+
+    var isLoggingEnabled: Boolean
+        /**
+         *
+         * Returns current status of debug logging
+         */
+        get() = mBuilder.mDebug
+        /**
+         *
+         * Turning on/off debug logging
+         *
+         * @param enabled **(default - **false**)**
+         */
+        set(enabled) {
+            mBuilder.loggingEnabled(enabled)
+        }
+
+    var isGesturesEnabled: Boolean
+        /**
+         *
+         * Returns current status of gestures
+         */
+        get() = mBuilder.mGesturesEnabled
+        /**
+         *
+         * Turning on/off gestures
+         *
+         * @param enabled **(default - **true**)**
+         */
+        set(enabled) {
+            mBuilder.gesturesEnabled(enabled)
+        }
+
+    var interpolator: TimeInterpolator?
+        /**
+         *
+         * Returns current interpolator
+         */
+        get() = mBuilder.mInterpolator
+        /**
+         *
+         * Sets interpolator for animation (whenever you use [.hide] or [.show] methods)
+         *
+         * @param interpolator **(default - **Decelerate interpolator**)**
+         */
+        set(interpolator) {
+            mBuilder.interpolator(interpolator)
+            mAnimationProcessor.paramsChanged()
+        }
+
+    val slideDirection: SlideDirection?
+        /**
+         *
+         * Returns gravity which used in combination with this SlideUp
+         */
+        get() = mBuilder.mSlideDirection
+
+    var isHideKeyboardWhenDisplayed: Boolean
+        /**
+         *
+         * Returns current behavior of soft input
+         */
+        get() = mBuilder.mHideKeyboard
+        /**
+         *
+         * Sets behavior of soft input
+         *
+         * @param hide **(default - **false**)**
+         */
+        set(hide) {
+            mBuilder.hideSoftInputWhenDisplayed(hide)
+        }
+
+    /**
+     *
+     * Toggle current state with animation
+     */
+    fun toggle() {
+        if (isVisible) {
+            hide()
         } else {
-            show();
+            show()
         }
     }
 
     /**
-     * <p>Toggle current state without animation</p>
+     *
+     * Toggle current state without animation
      */
-    public void toggleImmediately() {
-        if (isVisible()) {
-            hideImmediately();
+    fun toggleImmediately() {
+        if (isVisible) {
+            hideImmediately()
         } else {
-            showImmediately();
+            showImmediately()
         }
     }
 
     /**
-     * <p>Saving current parameters of SlideUp</p>
+     *
+     * Saving current parameters of SlideUp
      */
-    public void onSaveInstanceState(@NonNull Bundle savedState) {
-        savedState.putBoolean(KEY_STATE_SAVED, true);
-        savedState.putSerializable(KEY_START_DIRECTION, mBuilder.mSlideDirection);
-        savedState.putBoolean(KEY_DEBUG, mBuilder.mDebug);
-        savedState.putFloat(KEY_TOUCHABLE_AREA, mBuilder.mTouchableArea / mBuilder.mDensity);
-        savedState.putSerializable(KEY_STATE, mCurrentState);
-        savedState.putInt(KEY_AUTO_SLIDE_DURATION, mBuilder.mAutoSlideDuration);
-        savedState.putBoolean(KEY_HIDE_SOFT_INPUT, mBuilder.mHideKeyboard);
+    fun onSaveInstanceState(savedState: Bundle) {
+        savedState.putBoolean(KEY_STATE_SAVED, true)
+        savedState.putSerializable(KEY_START_DIRECTION, mBuilder.mSlideDirection)
+        savedState.putBoolean(KEY_DEBUG, mBuilder.mDebug)
+        savedState.putFloat(KEY_TOUCHABLE_AREA, mBuilder.mTouchableArea / mBuilder.mDensity)
+        savedState.putSerializable(KEY_STATE, mCurrentState)
+        savedState.putInt(KEY_AUTO_SLIDE_DURATION, mBuilder.mAutoSlideDuration)
+        savedState.putBoolean(KEY_HIDE_SOFT_INPUT, mBuilder.mHideKeyboard)
     }
+
     //endregion
+    private fun hide(immediately: Boolean) {
+        mAnimationProcessor.endAnimation()
+        when (mBuilder.mSlideDirection) {
+            SlideDirection.UP -> if (immediately) {
+                if (mBuilder.mSliderView.height > 0) {
+                    mBuilder.mSliderView.translationY = -mViewHeight
+                    notifyPercentChanged(100f)
+                } else {
+                    mBuilder.mStartState = State.HIDDEN
+                }
+            } else {
+                mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, mBuilder.mSliderView.height.toFloat())
+            }
 
-    private void hide(boolean immediately) {
-        mAnimationProcessor.endAnimation();
-        switch (mBuilder.mSlideDirection) {
-            case UP:
-                if (immediately) {
-                    if (mBuilder.mSliderView.getHeight() > 0) {
-                        mBuilder.mSliderView.setTranslationY(-mViewHeight);
-                        notifyPercentChanged(100);
-                    } else {
-                        mBuilder.mStartState = State.HIDDEN;
-                    }
+            SlideDirection.DOWN -> if (immediately) {
+                if (mBuilder.mSliderView.height > 0) {
+                    mBuilder.mSliderView.translationY = mViewHeight
+                    notifyPercentChanged(100f)
                 } else {
-                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationY(), mBuilder.mSliderView.getHeight());
+                    mBuilder.mStartState = State.HIDDEN
                 }
-                break;
-            case DOWN:
-                if (immediately) {
-                    if (mBuilder.mSliderView.getHeight() > 0) {
-                        mBuilder.mSliderView.setTranslationY(mViewHeight);
-                        notifyPercentChanged(100);
-                    } else {
-                        mBuilder.mStartState = State.HIDDEN;
-                    }
-                } else {
-                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationY(), mBuilder.mSliderView.getHeight());
-                }
-                break;
-//            case LEFT:
-//                if (immediately) {
-//                    if (mBuilder.mSliderView.getWidth() > 0) {
-//                        mBuilder.mSliderView.setTranslationX(-mViewWidth);
-//                        notifyPercentChanged(100);
-//                    } else {
-//                        mBuilder.mStartState = State.HIDDEN;
-//                    }
-//                } else {
-//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), mBuilder.mSliderView.getHeight());
-//                }
-//                break;
-//            case RIGHT:
-//                if (immediately) {
-//                    if (mBuilder.mSliderView.getWidth() > 0) {
-//                        mBuilder.mSliderView.setTranslationX(mViewWidth);
-//                        notifyPercentChanged(100);
-//                    } else {
-//                        mBuilder.mStartState = State.HIDDEN;
-//                    }
-//                } else {
-//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), mBuilder.mSliderView.getHeight());
-//                }
-//                break;
+            } else {
+                mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, mBuilder.mSliderView.height.toFloat())
+            }
         }
     }
 
-    private void show(boolean immediately) {
-        mAnimationProcessor.endAnimation();
-        switch (mBuilder.mSlideDirection) {
-            case UP:
+    private fun show(immediately: Boolean) {
+        mAnimationProcessor.endAnimation()
+        when (mBuilder.mSlideDirection) {
+            SlideDirection.UP -> {
                 if (immediately) {
-                    if (mBuilder.mSliderView.getHeight() > 0) {
-                        mBuilder.mSliderView.setTranslationY(0);
-                        notifyPercentChanged(0);
+                    if (mBuilder.mSliderView.height > 0) {
+                        mBuilder.mSliderView.translationY = 0f
+                        notifyPercentChanged(0f)
                     } else {
-                        mBuilder.mStartState = State.SHOWED;
+                        mBuilder.mStartState = State.SHOWED
                     }
                 } else {
-                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationY(), 0);
+                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, 0f)
                 }
-            case DOWN:
                 if (immediately) {
-                    if (mBuilder.mSliderView.getHeight() > 0) {
-                        mBuilder.mSliderView.setTranslationY(0);
-                        notifyPercentChanged(0);
+                    if (mBuilder.mSliderView.height > 0) {
+                        mBuilder.mSliderView.translationY = 0f
+                        notifyPercentChanged(0f)
                     } else {
-                        mBuilder.mStartState = State.SHOWED;
+                        mBuilder.mStartState = State.SHOWED
                     }
                 } else {
-                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationY(), 0);
+                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, 0f)
                 }
-                break;
-//            case LEFT:
-//                if (immediately) {
-//                    if (mBuilder.mSliderView.getWidth() > 0) {
-//                        mBuilder.mSliderView.setTranslationX(0);
-//                        notifyPercentChanged(0);
-//                    } else {
-//                        mBuilder.mStartState = State.SHOWED;
-//                    }
-//                } else {
-//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), 0);
-//                }
-//            case RIGHT:
-//                if (immediately) {
-//                    if (mBuilder.mSliderView.getWidth() > 0) {
-//                        mBuilder.mSliderView.setTranslationX(0);
-//                        notifyPercentChanged(0);
-//                    } else {
-//                        mBuilder.mStartState = State.SHOWED;
-//                    }
-//                } else {
-//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.getTranslationX(), 0);
-//                }
-//                break;
+            }
+
+            SlideDirection.DOWN -> if (immediately) {
+                if (mBuilder.mSliderView.height > 0) {
+                    mBuilder.mSliderView.translationY = 0f
+                    notifyPercentChanged(0f)
+                } else {
+                    mBuilder.mStartState = State.SHOWED
+                }
+            } else {
+                mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, 0f)
+            }
         }
     }
 
-    @Override
-    public final boolean onTouch(View v, MotionEvent event) {
-        if (mAnimationProcessor.isAnimationRunning()) return false;
+    override fun onTouch(v: View, event: MotionEvent): Boolean {
+        if (mAnimationProcessor.isAnimationRunning) return false
         if (!mBuilder.mGesturesEnabled) {
-            mBuilder.mSliderView.performClick();
-            return true;
+            mBuilder.mSliderView.performClick()
+            return true
         }
-        boolean consumed;
-        switch (mBuilder.mSlideDirection) {
-            case UP:
-                consumed = mVerticalTouchConsumer.slideUp(v, event);
-                break;
-            case DOWN:
-                consumed = mVerticalTouchConsumer.slideDown(v, event);
-                break;
-//            case LEFT:
-//                consumed = mHorizontalTouchConsumer.consumeStartToEnd(v, event);
-//                break;
-//            case RIGHT:
-//                consumed = mHorizontalTouchConsumer.consumeEndToStart(v, event);
-//                break;
-            default:
-                throw new IllegalArgumentException("You are using not supported gravity");
-        }
+        val consumed = when (mBuilder.mSlideDirection) {
+            SlideDirection.UP -> mVerticalTouchConsumer?.slideUp(v, event)
+            SlideDirection.DOWN -> mVerticalTouchConsumer?.slideDown(v, event)
+            else -> throw IllegalArgumentException("You are using not supported gravity")
+        } ?: false
         if (!consumed) {
-            mBuilder.mSliderView.performClick();
+            mBuilder.mSliderView.performClick()
         }
-        return true;
+        return true
     }
 
-    @Override
-    public final void onAnimationUpdate(ValueAnimator animation) {
-        float value = (float) animation.getAnimatedValue();
-        switch (mBuilder.mSlideDirection) {
-            case UP:
-                onAnimationSlideUp(value);
-                break;
-            case DOWN:
-                onAnimationSlideDown(value);
-                break;
-//            case LEFT:
-//                onAnimationUpdateStartToEnd(value);
-//                break;
-//            case RIGHT:
-//                onAnimationUpdateEndToStart(value);
-//                break;
+    override fun onAnimationUpdate(animation: ValueAnimator) {
+        val value = animation.animatedValue as Float
+        when (mBuilder.mSlideDirection) {
+            SlideDirection.UP -> onAnimationSlideUp(value)
+            SlideDirection.DOWN -> onAnimationSlideDown(value)
         }
     }
 
-    private void onAnimationSlideUp(float value) {
-        mBuilder.mSliderView.setTranslationY(-value);
-        float visibleDistance = mBuilder.mSliderView.getTop() - mBuilder.mSliderView.getY();
-        float percents = (visibleDistance) * 100 / mViewHeight;
-        notifyPercentChanged(percents);
+    private fun onAnimationSlideUp(value: Float) {
+        Log.d("zhangfei", "onAnimationSlideUp: $value")
+        mBuilder.mSliderView.translationY = -value
+//        val visibleDistance = mBuilder.mSliderView.top - mBuilder.mSliderView.y
+//        val percents = (visibleDistance) * 100 / mViewHeight
+//        notifyPercentChanged(percents)
     }
 
-    private void onAnimationSlideDown(float value) {
-        mBuilder.mSliderView.setTranslationY(value);
-        float visibleDistance = mBuilder.mSliderView.getY() - mBuilder.mSliderView.getTop();
-        float percents = (visibleDistance) * 100 / mViewHeight;
-        notifyPercentChanged(percents);
+    private fun onAnimationSlideDown(value: Float) {
+        Log.d("zhangfei", "onAnimationSlideDown: $value")
+        mBuilder.mSliderView.translationY = value
+//        val visibleDistance = mBuilder.mSliderView.y - mBuilder.mSliderView.top
+//        val percents = (visibleDistance) * 100 / mViewHeight
+//        notifyPercentChanged(percents)
     }
 
-//    private void onAnimationUpdateStartToEnd(float value) {
-//        mBuilder.mSliderView.setTranslationX(-value);
-//        float visibleDistance = mBuilder.mSliderView.getX() - getStart();
-//        float percents = (visibleDistance) * 100 / -mViewWidth;
-//        notifyPercentChanged(percents);
-//    }
-//
-//    private void onAnimationUpdateEndToStart(float value) {
-//        mBuilder.mSliderView.setTranslationX(value);
-//        float visibleDistance = mBuilder.mSliderView.getX() - getStart();
-//        float percents = (visibleDistance) * 100 / mViewWidth;
-//        notifyPercentChanged(percents);
-//    }
-
-    private int getStart() {
-        if (mBuilder.mIsRTL) {
-            return mBuilder.mSliderView.getRight();
+    private val start: Int
+        //    private void onAnimationUpdateStartToEnd(float value) {
+        get() = if (mBuilder.mIsRTL) {
+            mBuilder.mSliderView.right
         } else {
-            return mBuilder.mSliderView.getLeft();
+            mBuilder.mSliderView.left
         }
-    }
 
-    @Override
-    public void notifyPercentChanged(float percent) {
-        percent = percent > 100 ? 100 : percent;
-        percent = percent < 0 ? 0 : percent;
-        if (percent == 100) {
-            mBuilder.mSliderView.setVisibility(GONE);
-            notifyVisibilityChanged(GONE);
+    override fun notifyPercentChanged(percent: Float) {
+        val pp = percent.coerceIn(0f, 100f)
+        if (pp == 100f) {
+//            mBuilder.mSliderView.visibility = View.GONE
+//            notifyVisibilityChanged(View.GONE)
         } else {
-            mBuilder.mSliderView.setVisibility(VISIBLE);
-            if (percent == 0) {
-                notifyVisibilityChanged(VISIBLE);
-            }
+//            mBuilder.mSliderView.visibility = View.VISIBLE
+//            if (pp == 0f) {
+//                notifyVisibilityChanged(View.VISIBLE)
+//            }
         }
-        if (mAnimationProcessor.getSlideAnimationTo() == 0 && mBuilder.mHideKeyboard)
-            hideSoftInput();
-        if (!mBuilder.mListeners.isEmpty()) {
-            for (int i = 0; i < mBuilder.mListeners.size(); i++) {
-                Listener l = mBuilder.mListeners.get(i);
+        if (mAnimationProcessor.slideAnimationTo == 0f && mBuilder.mHideKeyboard) hideSoftInput()
+        if (mBuilder.mListeners.isNotEmpty()) {
+            for (i in mBuilder.mListeners.indices) {
+                val l = mBuilder.mListeners[i]
                 if (l != null) {
-                    if (l instanceof Listener.Slide) {
-                        Listener.Slide slide = (Listener.Slide) l;
-                        slide.onSlide(percent);
-                        logValue(i, "onSlide", percent);
+                    if (l is Listener.Slide) {
+                        l.onSlide(pp)
+                        logValue(i, "onSlide", pp)
                     }
                 } else {
-                    logError(i, "onSlide");
+                    logError(i, "onSlide")
                 }
             }
         }
     }
 
-    @Override
-    public void notifyVisibilityChanged(int visibility) {
+    override fun notifyVisibilityChanged(visibility: Int) {
         if (!mBuilder.mListeners.isEmpty()) {
-            for (int i = 0; i < mBuilder.mListeners.size(); i++) {
-                Listener l = mBuilder.mListeners.get(i);
+            for (i in mBuilder.mListeners.indices) {
+                val l = mBuilder.mListeners[i]
                 if (l != null) {
-                    if (l instanceof Listener.Visibility) {
-                        Listener.Visibility vis = (Listener.Visibility) l;
-                        vis.onVisibilityChanged(visibility);
-                        logValue(i, "onVisibilityChanged", visibility == VISIBLE ? "VISIBLE" : visibility == GONE ? "GONE" : visibility);
+                    if (l is Listener.Visibility) {
+                        l.onVisibilityChanged(visibility)
+                        logValue(i, "onVisibilityChanged", if (visibility == View.VISIBLE) "VISIBLE" else if (visibility == View.GONE) "GONE" else visibility)
                     }
                 } else {
-                    logError(i, "onVisibilityChanged");
+                    logError(i, "onVisibilityChanged")
                 }
             }
         }
-        switch (visibility) {
-            case VISIBLE:
-                mCurrentState = State.SHOWED;
-                break;
-            case GONE:
-                mCurrentState = State.HIDDEN;
-                break;
+        when (visibility) {
+            View.VISIBLE -> mCurrentState = State.SHOWED
+            View.GONE -> mCurrentState = State.HIDDEN
         }
     }
 
-    @Override
-    public final void onAnimationStart(Animator animator) {
+    override fun onAnimationStart(animator: Animator) {
     }
 
-    @Override
-    public final void onAnimationEnd(Animator animator) {
+    override fun onAnimationEnd(animator: Animator) {
     }
 
-    @Override
-    public final void onAnimationCancel(Animator animator) {
+    override fun onAnimationCancel(animator: Animator) {
     }
 
-    @Override
-    public final void onAnimationRepeat(Animator animator) {
+    override fun onAnimationRepeat(animator: Animator) {
     }
 
-    private void logValue(int listener, String method, Object message) {
+    private fun logValue(listener: Int, method: String, message: Any) {
         if (mBuilder.mDebug) {
-            Log.e(TAG, String.format("Listener(%1s) (%2$-23s) value = %3$s", listener, method, message));
+            Log.e(TAG, String.format("Listener(%1s) (%2$-23s) value = %3\$s", listener, method, message))
         }
     }
 
-    private void logError(int listener, String method) {
+    private fun logError(listener: Int, method: String) {
         if (mBuilder.mDebug) {
-            Log.d(TAG, String.format("Listener(%1s) (%2$-23s) Listener is null, skip notification...", listener, method));
+            Log.d(TAG, String.format("Listener(%1s) (%2$-23s) Listener is null, skip notification...", listener, method))
         }
+    }
+
+    companion object {
+        private val TAG: String = SlideUp::class.java.simpleName
+
+        val KEY_START_DIRECTION: String = TAG + "_start_direction"
+        val KEY_DEBUG: String = TAG + "_debug"
+        val KEY_TOUCHABLE_AREA: String = TAG + "_touchable_area"
+        val KEY_STATE: String = TAG + "_state"
+        val KEY_AUTO_SLIDE_DURATION: String = TAG + "_auto_slide_duration"
+        val KEY_HIDE_SOFT_INPUT: String = TAG + "_hide_soft_input"
+        val KEY_STATE_SAVED: String = TAG + "_state_saved"
     }
 }

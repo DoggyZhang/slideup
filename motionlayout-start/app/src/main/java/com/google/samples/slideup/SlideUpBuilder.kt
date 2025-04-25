@@ -1,264 +1,239 @@
-package com.google.samples.slideup;
+package com.google.samples.slideup
 
-import android.animation.TimeInterpolator;
-import android.os.Bundle;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewParent;
-import android.view.animation.DecelerateInterpolator;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.view.ViewCompat;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import android.animation.TimeInterpolator
+import android.os.Bundle
+import android.view.View
+import android.view.animation.DecelerateInterpolator
+import com.google.samples.slideup.SlideUp.SlideDirection
+import com.google.samples.slideup.SlideUp.SlideTo
 
 /**
- * <p>Default constructor for {@link SlideUp}</p>
+ *
+ * Default constructor for [SlideUp]
  */
-public final class SlideUpBuilder {
-    private boolean mStateRestored = false;
+class SlideUpBuilder(sliderView: View) {
+    private var mStateRestored = false
 
-    View mSliderView;
-    float mDensity;
-    float mTouchableArea;
-    boolean mIsRTL;
-    SlideUp.State mStartState = SlideUp.State.SHOWED;
-    List<SlideUp.Listener> mListeners = new ArrayList<>();
-    boolean mDebug = false;
-    int mAutoSlideDuration = 300;
-    SlideUp.SlideDirection mSlideDirection = SlideUp.SlideDirection.DOWN;
-    boolean mGesturesEnabled = true;
-    boolean mHideKeyboard = false;
-    TimeInterpolator mInterpolator = new DecelerateInterpolator();
-    View mAlsoScrollView;
-    SlideUp.SlideTo mSlideTo = SlideUp.SlideTo.SELF;
-    int mSpecifySlideTo = 0;
+    var mSliderView: View
+    var mDensity: Float
+    var mTouchableArea: Float = 0f
+    var mIsRTL: Boolean = false
+    var mStartState: SlideUp.State? = SlideUp.State.SHOWED
+    var mListeners: MutableList<SlideUp.Listener?> = ArrayList()
+    var mDebug: Boolean = false
+    var mAutoSlideDuration: Int = 300
+    var mSlideDirection: SlideDirection? = SlideDirection.DOWN
+    var mGesturesEnabled: Boolean = true
+    var mHideKeyboard: Boolean = false
+    var mInterpolator: TimeInterpolator? = DecelerateInterpolator()
+    var mAlsoScrollView: View? = null
+    var mSlideTo: SlideTo = SlideTo.SELF
+    var mSpecifySlideTo: Int = 0
 
 
     /**
-     * <p>Construct a SlideUp by passing the view or his child to use for the generation</p>
+     *
+     * Construct a SlideUp by passing the view or his child to use for the generation
      */
-    public SlideUpBuilder(View sliderView) {
-        Internal.checkNonNull(sliderView, "View can't be null");
-        mSliderView = sliderView;
-        mDensity = sliderView.getResources().getDisplayMetrics().density;
+    init {
+        mSliderView = sliderView
+        mDensity = sliderView.resources.displayMetrics.density
         //mIsRTL = sliderView.getResources().getBoolean(R.bool.is_right_to_left);
     }
 
     /**
-     * <p>Define a start state on screen</p>
      *
-     * @param startState <b>(default - <b color="#EF6C00">{@link SlideUp.State#HIDDEN}</b>)</b>
-     */
-    public SlideUpBuilder StartState(@NonNull SlideUp.State startState) {
-        if (!mStateRestored) {
-            mStartState = startState;
-        }
-        return this;
-    }
-
-    /**
-     * <p>Define slide direction, <b>this parameter affects the motion vector slider</b></p>
-     */
-    public SlideUpBuilder SlideDirection(@NonNull SlideUp.SlideDirection direction) {
-        if (!mStateRestored) {
-            mSlideDirection = direction;
-        }
-        return this;
-    }
-
-    /**
-     * <p>Define a {@link SlideUp.Listener} for this SlideUp</p>
+     * Define a start state on screen
      *
-     * @param listeners {@link List} of listeners
+     * @param startState **(default - **[SlideUp.State.HIDDEN]**)**
      */
-    public SlideUpBuilder listeners(@NonNull List<SlideUp.Listener> listeners) {
-        if (listeners != null) {
-            mListeners.addAll(listeners);
+    fun StartState(startState: SlideUp.State): SlideUpBuilder {
+        if (!mStateRestored) {
+            mStartState = startState
         }
-        return this;
+        return this
     }
 
     /**
-     * <p>Define a {@link SlideUp.Listener} for this SlideUp</p>
+     *
+     * Define slide direction, **this parameter affects the motion vector slider**
+     */
+    fun SlideDirection(direction: SlideDirection): SlideUpBuilder {
+        if (!mStateRestored) {
+            mSlideDirection = direction
+        }
+        return this
+    }
+
+    /**
+     *
+     * Define a [SlideUp.Listener] for this SlideUp
+     *
+     * @param listeners [List] of listeners
+     */
+    fun listeners(listeners: List<SlideUp.Listener>): SlideUpBuilder {
+        mListeners.addAll(listeners)
+        return this
+    }
+
+    /**
+     *
+     * Define a [SlideUp.Listener] for this SlideUp
      *
      * @param listeners array of listeners
      */
-    public SlideUpBuilder listeners(@NonNull SlideUp.Listener... listeners) {
-        List<SlideUp.Listener> listeners_list = new ArrayList<>();
-        Collections.addAll(listeners_list, listeners);
-        return listeners(listeners_list);
+    fun listeners(vararg listeners: SlideUp.Listener): SlideUpBuilder {
+        return listeners(listeners.toList())
     }
 
     /**
-     * <p>Turning on/off debug logging for all handled events</p>
      *
-     * @param enabled <b>(default - <b color="#EF6C00">false</b>)</b>
+     * Turning on/off debug logging for all handled events
+     *
+     * @param enabled **(default - **false**)**
      */
-    public SlideUpBuilder loggingEnabled(boolean enabled) {
+    fun loggingEnabled(enabled: Boolean): SlideUpBuilder {
         if (!mStateRestored) {
-            mDebug = enabled;
+            mDebug = enabled
         }
-        return this;
+        return this
     }
 
     /**
-     * <p>Define duration of animation (whenever you use {@link SlideUp#hide()} or {@link SlideUp#show()} methods)</p>
      *
-     * @param duration <b>(default - <b color="#EF6C00">300</b>)</b>
+     * Define duration of animation (whenever you use [SlideUp.hide] or [SlideUp.show] methods)
+     *
+     * @param duration **(default - **300**)**
      */
-    public SlideUpBuilder autoSlideDuration(int duration) {
+    fun autoSlideDuration(duration: Int): SlideUpBuilder {
         if (!mStateRestored) {
-            mAutoSlideDuration = duration;
+            mAutoSlideDuration = duration
         }
-        return this;
+        return this
     }
 
     /**
-     * <p>Define touchable area <b>(in px)</b> for interaction</p>
      *
-     * @param area <b>(default - <b color="#EF6C00">300dp</b>)</b>
+     * Define touchable area **(in px)** for interaction
+     *
+     * @param area **(default - **300dp**)**
      */
-    public SlideUpBuilder touchableAreaPx(float area) {
+    fun touchableAreaPx(area: Float): SlideUpBuilder {
         if (!mStateRestored) {
-            mTouchableArea = area;
+            mTouchableArea = area
         }
-        return this;
+        return this
     }
 
     /**
-     * <p>Define touchable area <b>(in dp)</b> for interaction</p>
      *
-     * @param area <b>(default - <b color="#EF6C00">300dp</b>)</b>
+     * Define touchable area **(in dp)** for interaction
+     *
+     * @param area **(default - **300dp**)**
      */
-    public SlideUpBuilder touchableAreaDp(float area) {
+    fun touchableAreaDp(area: Float): SlideUpBuilder {
         if (!mStateRestored) {
-            mTouchableArea = area * mDensity;
+            mTouchableArea = area * mDensity
         }
-        return this;
+        return this
     }
 
     /**
-     * <p>Turning on/off sliding on touch event</p>
      *
-     * @param enabled <b>(default - <b color="#EF6C00">true</b>)</b>
+     * Turning on/off sliding on touch event
+     *
+     * @param enabled **(default - **true**)**
      */
-    public SlideUpBuilder gesturesEnabled(boolean enabled) {
-        mGesturesEnabled = enabled;
-        return this;
+    fun gesturesEnabled(enabled: Boolean): SlideUpBuilder {
+        mGesturesEnabled = enabled
+        return this
     }
 
     /**
-     * <p>Define behavior of soft input</p>
      *
-     * @param hide <b>(default - <b color="#EF6C00">false</b>)</b>
+     * Define behavior of soft input
+     *
+     * @param hide **(default - **false**)**
      */
-    public SlideUpBuilder hideSoftInputWhenDisplayed(boolean hide) {
+    fun hideSoftInputWhenDisplayed(hide: Boolean): SlideUpBuilder {
         if (!mStateRestored) {
-            mHideKeyboard = hide;
+            mHideKeyboard = hide
         }
-        return this;
+        return this
     }
 
     /**
-     * <p>Define interpolator for animation (whenever you use {@link SlideUp#hide()} or {@link SlideUp#show()} methods)</p>
      *
-     * @param interpolator <b>(default - <b color="#EF6C00">Decelerate interpolator</b>)</b>
+     * Define interpolator for animation (whenever you use [SlideUp.hide] or [SlideUp.show] methods)
+     *
+     * @param interpolator **(default - **Decelerate interpolator**)**
      */
-    public SlideUpBuilder interpolator(TimeInterpolator interpolator) {
-        mInterpolator = interpolator;
-        return this;
+    fun interpolator(interpolator: TimeInterpolator?): SlideUpBuilder {
+        mInterpolator = interpolator
+        return this
     }
 
     /**
      * @param savedState parameters will be restored from this bundle, if it contains them
      */
-    public SlideUpBuilder savedState(@Nullable Bundle savedState) {
-        restoreParams(savedState);
-        return this;
+    fun savedState(savedState: Bundle?): SlideUpBuilder {
+        restoreParams(savedState)
+        return this
     }
 
 
     /**
-     * <p>Provide a {@link View} that will also trigger slide events on the {@link SlideUp}.</p>
+     *
+     * Provide a [View] that will also trigger slide events on the [SlideUp].
      *
      * @param alsoScrollView the other view that will trigger the slide events
      */
-    public SlideUpBuilder slideFromOtherView(@Nullable View alsoScrollView) {
-        mAlsoScrollView = alsoScrollView;
-        return this;
+    fun slideFromOtherView(alsoScrollView: View?): SlideUpBuilder {
+        mAlsoScrollView = alsoScrollView
+        return this
     }
 
-    public SlideUpBuilder slideToSelf() {
-        mSlideTo = SlideUp.SlideTo.SELF;
-        return this;
+    fun slideToSelf(): SlideUpBuilder {
+        mSlideTo = SlideTo.SELF
+        return this
     }
 
-    public SlideUpBuilder slideToParent() {
-        mSlideTo = SlideUp.SlideTo.PARENT;
-        return this;
+    fun slideToParent(): SlideUpBuilder {
+        mSlideTo = SlideTo.PARENT
+        return this
     }
 
-    public SlideUpBuilder slideTo(int length) {
-        mSlideTo = SlideUp.SlideTo.SPECIFY;
-        mSpecifySlideTo = length;
-        return this;
+    fun slideTo(length: Int): SlideUpBuilder {
+        mSlideTo = SlideTo.SPECIFY
+        mSpecifySlideTo = length
+        return this
     }
 
 
-    public float getSlideLength() {
-        switch (mSlideTo) {
-            case SELF:
-                return mSliderView.getHeight();
-            case PARENT:
-                switch (mSlideDirection) {
-                    case UP: {
-                        ViewParent parent = mSliderView.getParent();
-                        if (parent != null) {
-                            return mSliderView.getTop();
-                        }
-                        return 0;
-                    }
-                    case DOWN: {
-                        ViewParent parent = mSliderView.getParent();
-                        if (parent != null) {
-                            return ((ViewGroup) parent).getHeight() - mSliderView.getBottom();
-                        }
-                        return 0;
-                    }
-                }
-                break;
-            case SPECIFY:
-                return mSpecifySlideTo;
-        }
-        return 0;
+    /**
+     *
+     * Build the SlideUp and add behavior to view
+     */
+    fun build(): SlideUp {
+        return SlideUp(this)
     }
 
     /**
-     * <p>Build the SlideUp and add behavior to view</p>
+     *
+     * Trying restore saved state
      */
-    public SlideUp build() {
-        return new SlideUp(this);
-    }
-
-    /**
-     * <p>Trying restore saved state</p>
-     */
-    private void restoreParams(@Nullable Bundle savedState) {
-        if (savedState == null) return;
-        mStateRestored = savedState.getBoolean(SlideUp.KEY_STATE_SAVED, false);
-        if (savedState.getSerializable(SlideUp.KEY_STATE) != null) {
-            mStartState = (SlideUp.State) savedState.getSerializable(SlideUp.KEY_STATE);
+    private fun restoreParams(savedState: Bundle?) {
+        if (savedState == null) return
+        mStateRestored = savedState.getBoolean(SlideUp.Companion.KEY_STATE_SAVED, false)
+        if (savedState.getSerializable(SlideUp.Companion.KEY_STATE) != null) {
+            mStartState = savedState.getSerializable(SlideUp.Companion.KEY_STATE) as SlideUp.State?
         }
-        if (savedState.getSerializable(SlideUp.KEY_START_DIRECTION) != null) {
-            mSlideDirection = (SlideUp.SlideDirection) savedState.getSerializable(SlideUp.KEY_START_DIRECTION);
+        if (savedState.getSerializable(SlideUp.Companion.KEY_START_DIRECTION) != null) {
+            mSlideDirection = savedState.getSerializable(SlideUp.Companion.KEY_START_DIRECTION) as SlideDirection?
         }
-        mDebug = savedState.getBoolean(SlideUp.KEY_DEBUG, mDebug);
-        mTouchableArea = savedState.getFloat(SlideUp.KEY_TOUCHABLE_AREA, mTouchableArea) * mDensity;
-        mAutoSlideDuration = savedState.getInt(SlideUp.KEY_AUTO_SLIDE_DURATION, mAutoSlideDuration);
-        mHideKeyboard = savedState.getBoolean(SlideUp.KEY_HIDE_SOFT_INPUT, mHideKeyboard);
+        mDebug = savedState.getBoolean(SlideUp.Companion.KEY_DEBUG, mDebug)
+        mTouchableArea = savedState.getFloat(SlideUp.Companion.KEY_TOUCHABLE_AREA, mTouchableArea) * mDensity
+        mAutoSlideDuration = savedState.getInt(SlideUp.Companion.KEY_AUTO_SLIDE_DURATION, mAutoSlideDuration)
+        mHideKeyboard = savedState.getBoolean(SlideUp.Companion.KEY_HIDE_SOFT_INPUT, mHideKeyboard)
     }
 }

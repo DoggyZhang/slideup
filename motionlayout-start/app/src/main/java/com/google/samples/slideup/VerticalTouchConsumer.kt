@@ -1,117 +1,123 @@
-package com.google.samples.slideup;
+package com.google.samples.slideup
 
-import static java.lang.Math.abs;
-
-import android.util.Log;
-import android.view.MotionEvent;
-import android.view.View;
+import android.util.Log
+import android.view.MotionEvent
+import android.view.View
+import com.google.samples.slideup.SlideUp.SlideDirection
+import kotlin.math.abs
 
 /**
  * @author pa.gulko zTrap (05.07.2017)
  */
-class VerticalTouchConsumer extends TouchConsumer {
-    private boolean mGoingUp = false;
-    private boolean mGoingDown = false;
+internal class VerticalTouchConsumer(
+    builder: SlideUpBuilder,
+    notifier: LoggerNotifier,
+    animationProcessor: AnimationProcessor,
+    private val slideLength: Float
+) : TouchConsumer(builder, notifier, animationProcessor) {
 
-    VerticalTouchConsumer(SlideUpBuilder builder, LoggerNotifier notifier, AnimationProcessor animationProcessor) {
-        super(builder, notifier, animationProcessor);
-    }
+    private var mGoingUp = false
+    private var mGoingDown = false
 
-    boolean slideDown(View touchedView, MotionEvent event) {
-        Log.d("zhangfei", "consumeBottomToTop, touchedView: " + touchedView + ", event:" + event.getActionMasked());
-        float touchedArea = event.getY();
-        switch (event.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                mViewHeight = mBuilder.mSliderView.getHeight();
-                mStartPositionY = event.getRawY();
-                mViewStartPositionY = mBuilder.mSliderView.getTranslationY();
-//                mCanSlide = touchFromAlsoSlide(touchedView, event);
+    fun slideDown(touchedView: View, event: MotionEvent): Boolean {
+        Log.d("zhangfei", "consumeBottomToTop, touchedView: " + touchedView + ", event:" + event.actionMasked)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                mStartPositionY = event.rawY
+                mViewStartPositionY = mBuilder.mSliderView.translationY
+                //                mCanSlide = touchFromAlsoSlide(touchedView, event);
 //                mCanSlide |= mBuilder.mTouchableArea >= touchedArea;
-                Log.d("zhangfei", "slideDown(ACTION_DOWN) -> mViewHeight: " + mViewHeight + ", mCanSlide:" + mCanSlide);
-                break;
-            case MotionEvent.ACTION_MOVE:
-                float difference = event.getRawY() - mStartPositionY;
-                float moveTo = mViewStartPositionY + difference;
-                float slideLength = mBuilder.getSlideLength();
-                float percents = moveTo * 100 / slideLength;
-                calculateDirection(event);
+                Log.d("zhangfei", "slideDown(ACTION_DOWN) -> mCanSlide:$mCanSlide")
+            }
 
-                Log.d("zhangfei", "slideDown(ACTION_MOVE) -> difference: " + difference + ", mCanSlide:" + mCanSlide);
-                Log.d("zhangfei", "                          moveTo:" + moveTo + ", slideLength:" + slideLength + ", percent:" + percents);
-                if (mBuilder.mSlideDirection == SlideUp.SlideDirection.DOWN && moveTo > 0 && mCanSlide) {
-                    mNotifier.notifyPercentChanged(percents);
-                    mBuilder.mSliderView.setTranslationY(moveTo);
+            MotionEvent.ACTION_MOVE -> {
+                val difference = event.rawY - mStartPositionY
+                val moveTo = mViewStartPositionY + difference
+                val percents = moveTo * 100 / slideLength
+                calculateDirection(event)
+
+                Log.d("zhangfei", "slideDown(ACTION_MOVE) -> difference: $difference, mCanSlide:$mCanSlide")
+                Log.d("zhangfei", "                          moveTo:$moveTo, slideLength:$slideLength, percent:$percents")
+                if (mBuilder.mSlideDirection == SlideDirection.DOWN && moveTo > 0 && mCanSlide) {
+                    mNotifier.notifyPercentChanged(percents)
+                    mBuilder.mSliderView.translationY = moveTo
                 }
-                break;
-            case MotionEvent.ACTION_UP:
-                float slideAnimationFrom = mBuilder.mSliderView.getTranslationY();
+            }
+
+            MotionEvent.ACTION_UP -> {
+                val slideAnimationFrom = mBuilder.mSliderView.translationY
                 if (slideAnimationFrom == mViewStartPositionY) {
-                    return !Internal.isUpEventInView(mBuilder.mSliderView, event);
+                    return !Internal.isUpEventInView(mBuilder.mSliderView, event)
                 }
-                boolean scrollableAreaConsumed = mBuilder.mSliderView.getTranslationY() > mBuilder.mSliderView.getHeight() / 5;
+                val scrollableAreaConsumed = mBuilder.mSliderView.translationY > slideLength
 
                 if (scrollableAreaConsumed && mGoingDown) {
-                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, mBuilder.mSliderView.getHeight());
+                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, slideLength)
                 } else {
-                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, 0);
+                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, 0f)
                 }
-                mCanSlide = true;
-                mGoingUp = false;
-                mGoingDown = false;
-                break;
+                mCanSlide = true
+                mGoingUp = false
+                mGoingDown = false
+            }
         }
-        mPrevPositionY = event.getRawY();
-        mPrevPositionX = event.getRawX();
-        return true;
+        mPrevPositionY = event.rawY
+        mPrevPositionX = event.rawX
+        return true
     }
 
-    boolean slideUp(View touchedView, MotionEvent event) {
-        float touchedArea = event.getY();
-        switch (event.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                mViewHeight = mBuilder.mSliderView.getHeight();
-                mStartPositionY = event.getRawY();
-                mViewStartPositionY = mBuilder.mSliderView.getTranslationY();
-//                mCanSlide = touchFromAlsoSlide(touchedView, event);
+    fun slideUp(touchedView: View?, event: MotionEvent): Boolean {
+        val touchedArea = event.y
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                mStartPositionY = event.rawY
+                mViewStartPositionY = mBuilder.mSliderView.translationY
+                //                mCanSlide = touchFromAlsoSlide(touchedView, event);
 //                mCanSlide |= getBottom() - mBuilder.mTouchableArea <= touchedArea;
-                Log.d("zhangfei", "slideUp(ACTION_DOWN) -> mViewHeight: " + mViewHeight + ", mCanSlide:" + mCanSlide);
-                break;
-            case MotionEvent.ACTION_MOVE:
-                float difference = event.getRawY() - mStartPositionY;
-                float moveTo = mViewStartPositionY + difference;
-                float slideLength = mBuilder.getSlideLength();
-                float percents = abs(moveTo) * 100 / slideLength;
-                calculateDirection(event);
+                Log.d("zhangfei", "slideUp(ACTION_DOWN) -> mCanSlide:$mCanSlide")
+            }
 
-                Log.d("zhangfei", "slideUp(ACTION_MOVE) -> difference: " + difference + ", mCanSlide:" + mCanSlide);
-                Log.d("zhangfei", "                        moveTo:" + moveTo + ", slideLength:" + slideLength + ", percent:" + percents);
-                if (mBuilder.mSlideDirection == SlideUp.SlideDirection.UP && moveTo < 0 && mCanSlide) {
-                    mNotifier.notifyPercentChanged(percents);
-                    mBuilder.mSliderView.setTranslationY(moveTo);
+            MotionEvent.ACTION_MOVE -> {
+                val difference = event.rawY - mStartPositionY
+                val moveTo = mViewStartPositionY + difference
+                val slideLength = slideLength
+                val percents = (abs(moveTo.toDouble()) * 100 / slideLength).toFloat()
+                calculateDirection(event)
+
+                Log.d("zhangfei", "slideUp(ACTION_MOVE) -> difference: $difference, mCanSlide:$mCanSlide")
+                Log.d("zhangfei", "                        moveTo:$moveTo, slideLength:$slideLength, percent:$percents")
+                if (mBuilder.mSlideDirection == SlideDirection.UP && moveTo < 0 && mCanSlide) {
+                    mNotifier.notifyPercentChanged(percents)
+                    mBuilder.mSliderView.translationY = moveTo
                 }
-                break;
-            case MotionEvent.ACTION_UP:
-                float slideAnimationFrom = -mBuilder.mSliderView.getTranslationY();
+            }
+
+            MotionEvent.ACTION_UP -> {
+                val slideAnimationFrom = mBuilder.mSliderView.translationY
                 if (slideAnimationFrom == mViewStartPositionY) {
-                    return !Internal.isUpEventInView(mBuilder.mSliderView, event);
+                    return !Internal.isUpEventInView(mBuilder.mSliderView, event)
                 }
-                boolean scrollableAreaConsumed = mBuilder.mSliderView.getTranslationY() < -mBuilder.mSliderView.getHeight() / 5;
+                val scrollableAreaConsumed = mBuilder.mSliderView.translationY < -slideLength
 
-                if (scrollableAreaConsumed && mGoingUp) {
-                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, mBuilder.mSliderView.getHeight() + mBuilder.mSliderView.getTop());
-                } else {
-                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, 0);
-                }
-                mCanSlide = true;
-                break;
+                Log.d("zhangfei", "slideUp(ACTION_UP) -> slideAnimationFrom: $slideAnimationFrom, mViewStartPositionY:$mViewStartPositionY, mBuilder.mSliderView.translationY:${mBuilder.mSliderView.translationY}")
+                Log.d("zhangfei", "                      mGoingUp: $mGoingUp, scrollableAreaConsumed:$scrollableAreaConsumed, slideLength:$slideLength")
+
+                mAnimationProcessor.setValuesAndStart(-slideAnimationFrom, 0f)
+//                if (scrollableAreaConsumed && mGoingUp) {
+//                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, -slideLength)
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, 0f)
+//                }
+                mCanSlide = true
+            }
         }
-        mPrevPositionY = event.getRawY();
-        mPrevPositionX = event.getRawX();
-        return true;
+        mPrevPositionY = event.rawY
+        mPrevPositionX = event.rawX
+        return true
     }
 
-    private void calculateDirection(MotionEvent event) {
-        mGoingUp = mPrevPositionY - event.getRawY() > 0;
-        mGoingDown = mPrevPositionY - event.getRawY() < 0;
+    private fun calculateDirection(event: MotionEvent) {
+        mGoingUp = mPrevPositionY - event.rawY > 0
+        mGoingDown = mPrevPositionY - event.rawY < 0
     }
 }

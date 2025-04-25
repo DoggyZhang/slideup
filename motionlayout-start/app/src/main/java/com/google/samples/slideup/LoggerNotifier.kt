@@ -1,11 +1,10 @@
-package com.google.samples.slideup;
+package com.google.samples.slideup
 
 /**
  * @author pa.gulko zTrap (05.07.2017)
  */
-interface LoggerNotifier {
-    
-    void notifyPercentChanged(float percent);
-    
-    void notifyVisibilityChanged(int visibility);
+internal interface LoggerNotifier {
+    fun notifyPercentChanged(percent: Float)
+
+    fun notifyVisibilityChanged(visibility: Int)
 }

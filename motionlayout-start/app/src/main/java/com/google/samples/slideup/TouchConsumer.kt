@@ -1,60 +1,50 @@
-package com.google.samples.slideup;
+package com.google.samples.slideup
 
-import android.view.MotionEvent;
-import android.view.View;
+import android.view.MotionEvent
+import android.view.View
 
 /**
  * @author pa.gulko zTrap (12.07.2017)
  */
-class TouchConsumer {
-    SlideUpBuilder mBuilder;
-    AnimationProcessor mAnimationProcessor;
+internal open class TouchConsumer(
+    var mBuilder: SlideUpBuilder,
+    var mNotifier: LoggerNotifier,
+    var mAnimationProcessor: AnimationProcessor
+) {
+    var mCanSlide: Boolean = true
 
-    boolean mCanSlide = true;
-    LoggerNotifier mNotifier;
-    
-    float mViewHeight;
-    float mViewWidth;
-    
-    float mStartPositionY;
-    float mStartPositionX;
-    volatile float mPrevPositionY;
-    volatile float mPrevPositionX;
-    float mViewStartPositionY;
-    float mViewStartPositionX;
-    
-    TouchConsumer(SlideUpBuilder builder, LoggerNotifier notifier,
-                  AnimationProcessor animationProcessor){
-        mBuilder = builder;
-        mNotifier = notifier;
-        mAnimationProcessor = animationProcessor;
-    }
-    
-    int getEnd(){
-        if (mBuilder.mIsRTL){
-            return mBuilder.mSliderView.getLeft();
-        }else {
-            return mBuilder.mSliderView.getRight();
-        }
-    }
-    
-    int getStart(){
-        if (mBuilder.mIsRTL){
-            return mBuilder.mSliderView.getRight();
-        }else {
-            return mBuilder.mSliderView.getLeft();
-        }
-    }
-    
-    int getTop(){
-        return mBuilder.mSliderView.getTop();
-    }
-    
-    int getBottom(){
-        return mBuilder.mSliderView.getBottom();
-    }
+    var mStartPositionY: Float = 0f
+    var mStartPositionX: Float = 0f
 
-    boolean touchFromAlsoSlide(View touchedView, MotionEvent event) {
-        return touchedView == mBuilder.mAlsoScrollView;
+    @Volatile
+    var mPrevPositionY: Float = 0f
+
+    @Volatile
+    var mPrevPositionX: Float = 0f
+    var mViewStartPositionY: Float = 0f
+    var mViewStartPositionX: Float = 0f
+
+    val end: Int
+        get() = if (mBuilder.mIsRTL) {
+            mBuilder.mSliderView.left
+        } else {
+            mBuilder.mSliderView.right
+        }
+
+    val start: Int
+        get() = if (mBuilder.mIsRTL) {
+            mBuilder.mSliderView.right
+        } else {
+            mBuilder.mSliderView.left
+        }
+
+    val top: Int
+        get() = mBuilder.mSliderView.top
+
+    val bottom: Int
+        get() = mBuilder.mSliderView.bottom
+
+    fun touchFromAlsoSlide(touchedView: View, event: MotionEvent?): Boolean {
+        return touchedView === mBuilder.mAlsoScrollView
     }
 }
