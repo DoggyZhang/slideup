@@ -95,13 +95,10 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
                 when (mBuilder.mSlideDirection) {
                     SlideDirection.UP -> {
                         mBuilder.mSliderView.pivotY = 0f
-
-                        setTouchableAreaVertical()
                     }
 
                     SlideDirection.DOWN -> {
                         mBuilder.mSliderView.pivotY = 0f
-                        setTouchableAreaVertical()
                     }
                 }
                 createConsumers()
@@ -109,18 +106,6 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
             })
         )
         updateToCurrentState()
-    }
-
-    private fun setTouchableAreaHorizontal() {
-        if (mBuilder.mTouchableArea == 0f) {
-            mBuilder.mTouchableArea = mViewWidth //(float) Math.ceil(mViewWidth / 10);
-        }
-    }
-
-    private fun setTouchableAreaVertical() {
-        if (mBuilder.mTouchableArea == 0f) {
-            mBuilder.mTouchableArea = mViewHeight //(float) Math.ceil(mViewHeight / 10);
-        }
     }
 
     private fun createConsumers() {
@@ -237,37 +222,6 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
          */
         get() = mBuilder.mAutoSlideDuration.toFloat()
 
-    var touchableAreaDp: Float
-        /**
-         *
-         * Returns touchable area **(in dp)** for interaction
-         */
-        get() = mBuilder.mTouchableArea / mBuilder.mDensity
-        /**
-         *
-         * Set touchable area **(in dp)** for interaction
-         *
-         * @param touchableArea **(default - **300dp**)**
-         */
-        set(touchableArea) {
-            mBuilder.touchableAreaDp(touchableArea)
-        }
-
-    var touchableAreaPx: Float
-        /**
-         *
-         * Returns touchable area **(in px)** for interaction
-         */
-        get() = mBuilder.mTouchableArea
-        /**
-         *
-         * Set touchable area **(in px)** for interaction
-         *
-         * @param touchableArea **(default - **300dp**)**
-         */
-        set(touchableArea) {
-            mBuilder.touchableAreaPx(touchableArea)
-        }
 
     val isAnimationRunning: Boolean
         /**
@@ -414,7 +368,6 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
         savedState.putBoolean(KEY_STATE_SAVED, true)
         savedState.putSerializable(KEY_START_DIRECTION, mBuilder.mSlideDirection)
         savedState.putBoolean(KEY_DEBUG, mBuilder.mDebug)
-        savedState.putFloat(KEY_TOUCHABLE_AREA, mBuilder.mTouchableArea / mBuilder.mDensity)
         savedState.putSerializable(KEY_STATE, mCurrentState)
         savedState.putInt(KEY_AUTO_SLIDE_DURATION, mBuilder.mAutoSlideDuration)
         savedState.putBoolean(KEY_HIDE_SOFT_INPUT, mBuilder.mHideKeyboard)
@@ -487,12 +440,14 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
         }
     }
 
+
     override fun onTouch(v: View, event: MotionEvent): Boolean {
         if (mAnimationProcessor.isAnimationRunning) return false
         if (!mBuilder.mGesturesEnabled) {
             mBuilder.mSliderView.performClick()
             return true
         }
+
         val consumed = when (mBuilder.mSlideDirection) {
             SlideDirection.UP -> mVerticalTouchConsumer?.slideUp(v, event)
             SlideDirection.DOWN -> mVerticalTouchConsumer?.slideDown(v, event)
@@ -514,7 +469,7 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
 
     private fun onAnimationSlideUp(value: Float) {
         Log.d("zhangfei", "onAnimationSlideUp: $value")
-        mBuilder.mSliderView.translationY = -value
+        mBuilder.mSliderView.translationY = value
 //        val visibleDistance = mBuilder.mSliderView.top - mBuilder.mSliderView.y
 //        val percents = (visibleDistance) * 100 / mViewHeight
 //        notifyPercentChanged(percents)
@@ -612,7 +567,6 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
 
         val KEY_START_DIRECTION: String = TAG + "_start_direction"
         val KEY_DEBUG: String = TAG + "_debug"
-        val KEY_TOUCHABLE_AREA: String = TAG + "_touchable_area"
         val KEY_STATE: String = TAG + "_state"
         val KEY_AUTO_SLIDE_DURATION: String = TAG + "_auto_slide_duration"
         val KEY_HIDE_SOFT_INPUT: String = TAG + "_hide_soft_input"

@@ -3,6 +3,7 @@ package com.google.samples.slideup
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import com.google.samples.slideup.SlideUp.SlideDirection
 import kotlin.math.abs
 
@@ -16,6 +17,7 @@ internal class VerticalTouchConsumer(
     private val slideLength: Float
 ) : TouchConsumer(builder, notifier, animationProcessor) {
 
+    private val touchSlop = ViewConfiguration.get(mBuilder.mSliderView.context).scaledPagingTouchSlop
     private var mGoingUp = false
     private var mGoingDown = false
 
@@ -31,9 +33,11 @@ internal class VerticalTouchConsumer(
             }
 
             MotionEvent.ACTION_MOVE -> {
+
                 val difference = event.rawY - mStartPositionY
                 val moveTo = mViewStartPositionY + difference
                 val percents = moveTo * 100 / slideLength
+
                 calculateDirection(event)
 
                 Log.d("zhangfei", "slideDown(ACTION_MOVE) -> difference: $difference, mCanSlide:$mCanSlide")
@@ -50,6 +54,9 @@ internal class VerticalTouchConsumer(
                     return !Internal.isUpEventInView(mBuilder.mSliderView, event)
                 }
                 val scrollableAreaConsumed = mBuilder.mSliderView.translationY > slideLength
+
+                Log.d("zhangfei", "slideDown(ACTION_UP) -> slideAnimationFrom: $slideAnimationFrom, mViewStartPositionY:$mViewStartPositionY, mBuilder.mSliderView.translationY:${mBuilder.mSliderView.translationY}")
+                Log.d("zhangfei", "                        mGoingDown: $mGoingDown, scrollableAreaConsumed:$scrollableAreaConsumed, slideLength:$slideLength")
 
                 if (scrollableAreaConsumed && mGoingDown) {
                     mAnimationProcessor.setValuesAndStart(slideAnimationFrom, slideLength)
@@ -102,12 +109,11 @@ internal class VerticalTouchConsumer(
                 Log.d("zhangfei", "slideUp(ACTION_UP) -> slideAnimationFrom: $slideAnimationFrom, mViewStartPositionY:$mViewStartPositionY, mBuilder.mSliderView.translationY:${mBuilder.mSliderView.translationY}")
                 Log.d("zhangfei", "                      mGoingUp: $mGoingUp, scrollableAreaConsumed:$scrollableAreaConsumed, slideLength:$slideLength")
 
-                mAnimationProcessor.setValuesAndStart(-slideAnimationFrom, 0f)
-//                if (scrollableAreaConsumed && mGoingUp) {
-//                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, -slideLength)
-//                } else {
-//                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, 0f)
-//                }
+                if (scrollableAreaConsumed && mGoingUp) {
+                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, -slideLength)
+                } else {
+                    mAnimationProcessor.setValuesAndStart(slideAnimationFrom, 0f)
+                }
                 mCanSlide = true
             }
         }
@@ -117,6 +123,9 @@ internal class VerticalTouchConsumer(
     }
 
     private fun calculateDirection(event: MotionEvent) {
+        if (abs(event.rawY - mPrevPositionY) < touchSlop) {
+            return
+        }
         mGoingUp = mPrevPositionY - event.rawY > 0
         mGoingDown = mPrevPositionY - event.rawY < 0
     }

@@ -16,7 +16,6 @@ class SlideUpBuilder(sliderView: View) {
 
     var mSliderView: View
     var mDensity: Float
-    var mTouchableArea: Float = 0f
     var mIsRTL: Boolean = false
     var mStartState: SlideUp.State? = SlideUp.State.SHOWED
     var mListeners: MutableList<SlideUp.Listener?> = ArrayList()
@@ -114,32 +113,6 @@ class SlideUpBuilder(sliderView: View) {
 
     /**
      *
-     * Define touchable area **(in px)** for interaction
-     *
-     * @param area **(default - **300dp**)**
-     */
-    fun touchableAreaPx(area: Float): SlideUpBuilder {
-        if (!mStateRestored) {
-            mTouchableArea = area
-        }
-        return this
-    }
-
-    /**
-     *
-     * Define touchable area **(in dp)** for interaction
-     *
-     * @param area **(default - **300dp**)**
-     */
-    fun touchableAreaDp(area: Float): SlideUpBuilder {
-        if (!mStateRestored) {
-            mTouchableArea = area * mDensity
-        }
-        return this
-    }
-
-    /**
-     *
      * Turning on/off sliding on touch event
      *
      * @param enabled **(default - **true**)**
@@ -224,16 +197,15 @@ class SlideUpBuilder(sliderView: View) {
      */
     private fun restoreParams(savedState: Bundle?) {
         if (savedState == null) return
-        mStateRestored = savedState.getBoolean(SlideUp.Companion.KEY_STATE_SAVED, false)
-        if (savedState.getSerializable(SlideUp.Companion.KEY_STATE) != null) {
-            mStartState = savedState.getSerializable(SlideUp.Companion.KEY_STATE) as SlideUp.State?
+        mStateRestored = savedState.getBoolean(SlideUp.KEY_STATE_SAVED, false)
+        if (savedState.getSerializable(SlideUp.KEY_STATE) != null) {
+            mStartState = savedState.getSerializable(SlideUp.KEY_STATE) as SlideUp.State?
         }
-        if (savedState.getSerializable(SlideUp.Companion.KEY_START_DIRECTION) != null) {
-            mSlideDirection = savedState.getSerializable(SlideUp.Companion.KEY_START_DIRECTION) as SlideDirection?
+        if (savedState.getSerializable(SlideUp.KEY_START_DIRECTION) != null) {
+            mSlideDirection = savedState.getSerializable(SlideUp.KEY_START_DIRECTION) as SlideDirection?
         }
-        mDebug = savedState.getBoolean(SlideUp.Companion.KEY_DEBUG, mDebug)
-        mTouchableArea = savedState.getFloat(SlideUp.Companion.KEY_TOUCHABLE_AREA, mTouchableArea) * mDensity
-        mAutoSlideDuration = savedState.getInt(SlideUp.Companion.KEY_AUTO_SLIDE_DURATION, mAutoSlideDuration)
-        mHideKeyboard = savedState.getBoolean(SlideUp.Companion.KEY_HIDE_SOFT_INPUT, mHideKeyboard)
+        mDebug = savedState.getBoolean(SlideUp.KEY_DEBUG, mDebug)
+        mAutoSlideDuration = savedState.getInt(SlideUp.KEY_AUTO_SLIDE_DURATION, mAutoSlideDuration)
+        mHideKeyboard = savedState.getBoolean(SlideUp.KEY_HIDE_SOFT_INPUT, mHideKeyboard)
     }
 }
