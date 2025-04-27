@@ -1,20 +1,19 @@
-package com.google.samples.slideup
+package com.google.samples.slide
 
-import android.animation.Animator
 import android.animation.ValueAnimator
 import android.animation.ValueAnimator.AnimatorUpdateListener
 import android.util.Log
 
-/**
- * @author pa.gulko zTrap (12.07.2017)
- */
-internal class AnimationProcessor(private val mBuilder: SlideUpBuilder, updateListener: AnimatorUpdateListener, listener: Animator.AnimatorListener) {
+class AnimationProcessor(
+    private val mBuilder: SlideBuilder,
+    updateListener: AnimatorUpdateListener
+) {
     private var mValueAnimator: ValueAnimator? = null
     var slideAnimationTo: Float = 0f
         private set
 
     init {
-        createAnimation(updateListener, listener)
+        createAnimation(updateListener)
     }
 
     fun endAnimation() {
@@ -23,7 +22,7 @@ internal class AnimationProcessor(private val mBuilder: SlideUpBuilder, updateLi
                 it.end()
             }
         } ?: let {
-            Log.w("zhangfei", "endAnimation fail, for mValueAnimator is null")
+            Log.w(TAG_SLIDE_ANIMATION, "endAnimation fail, for mValueAnimator is null")
         }
     }
 
@@ -32,7 +31,7 @@ internal class AnimationProcessor(private val mBuilder: SlideUpBuilder, updateLi
             it.setDuration(mBuilder.mAutoSlideDuration.toLong())
             it.interpolator = mBuilder.mInterpolator
         } ?: let {
-            Log.w("zhangfei", "paramsChanged fail, for mValueAnimator is null")
+            Log.w(TAG_SLIDE_ANIMATION, "paramsChanged fail, for mValueAnimator is null")
         }
     }
 
@@ -40,22 +39,22 @@ internal class AnimationProcessor(private val mBuilder: SlideUpBuilder, updateLi
         get() = mValueAnimator != null && mValueAnimator?.isRunning == true
 
     fun setValuesAndStart(from: Float, to: Float) {
-        Log.d("zhangfei", "setValuesAndStart, from:$from, to:$to")
+        Log.d(TAG_SLIDE_ANIMATION, "setValuesAndStart, from:$from, to:$to")
         slideAnimationTo = to
         mValueAnimator?.let {
             it.setFloatValues(from, to)
             it.start()
         } ?: let {
-            Log.w("zhangfei", "setValuesAndStart fail, for mValueAnimator is null")
+            Log.w(TAG_SLIDE_ANIMATION, "setValuesAndStart fail, for mValueAnimator is null")
         }
     }
 
-    private fun createAnimation(updateListener: AnimatorUpdateListener, listener: Animator.AnimatorListener) {
+    private fun createAnimation(updateListener: AnimatorUpdateListener) {
         mValueAnimator = ValueAnimator.ofFloat().apply {
             setDuration(mBuilder.mAutoSlideDuration.toLong())
             interpolator = mBuilder.mInterpolator
             addUpdateListener(updateListener)
-            addListener(listener)
+            //addListener(listener)
         }
     }
 }

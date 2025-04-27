@@ -1,9 +1,6 @@
-package com.google.samples.slideup
+package com.google.samples.slide
 
-import android.animation.Animator
 import android.animation.TimeInterpolator
-import android.animation.ValueAnimator
-import android.animation.ValueAnimator.AnimatorUpdateListener
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
@@ -14,8 +11,9 @@ import android.view.View.OnTouchListener
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import androidx.annotation.IntDef
+import com.google.samples.slide.touch.SlideTouchConsumer
 
-class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTouchListener, AnimatorUpdateListener, Animator.AnimatorListener, LoggerNotifier {
+class Slide(private val mBuilder: SlideBuilder) : OnTouchListener, SlideListener {
     /**
      *
      * Available start states
@@ -32,10 +30,35 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
         SHOWED
     }
 
-    enum class SlideDirection {
-        UP,
-        DOWN,  //        LEFT,
-        //        RIGHT
+    enum class SlideDirection(val dir: Int) {
+        UP(0x0001),
+        DOWN(0x0010),
+        VERTICAL(0x0011),
+        LEFT(0x0100),
+        RIGHT(0x1000),
+        HORIZONTAL(0x1100);
+
+        companion object {
+            @JvmStatic
+            fun isUp(dir: Int): Boolean {
+                return (UP.dir and dir) > 0
+            }
+
+            @JvmStatic
+            fun isDown(dir: Int): Boolean {
+                return (DOWN.dir and dir) > 0
+            }
+
+            @JvmStatic
+            fun isLeft(dir: Int): Boolean {
+                return (LEFT.dir and dir) > 0
+            }
+
+            @JvmStatic
+            fun isRight(dir: Int): Boolean {
+                return (RIGHT.dir and dir) > 0
+            }
+        }
     }
 
     enum class SlideTo {
@@ -54,31 +77,23 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
     private var mViewHeight = 0f
     private var mViewWidth = 0f
 
-    private var mVerticalTouchConsumer: VerticalTouchConsumer? = null
-
-    //    private HorizontalTouchConsumer mHorizontalTouchConsumer;
-    private var mAnimationProcessor: AnimationProcessor = AnimationProcessor(mBuilder, this, this)
+    private var touchConsumer: SlideTouchConsumer? = null
 
     /**
      *
      * Interface to listen to all handled events taking place in the slider
      */
     interface Listener {
-        interface Slide : Listener {
-            /**
-             * @param percent percents of complete slide **(100 = HIDDEN, 0 = SHOWED)**
-             */
-            fun onSlide(percent: Float)
-        }
+        /**
+         * @param percent percents of complete slide **(100 = HIDDEN, 0 = SHOWED)**
+         */
+        fun onSlide(percent: Float)
 
-        interface Visibility : Listener {
-            /**
-             * @param visibility (**GONE** or **VISIBLE**)
-             */
-            fun onVisibilityChanged(visibility: Int)
-        }
 
-        interface Events : Visibility, Slide
+        /**
+         * @param visibility (**GONE** or **VISIBLE**)
+         */
+        fun onVisibilityChanged(visibility: Int)
     }
 
     init {
@@ -93,12 +108,16 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
                 mViewHeight = mBuilder.mSliderView.height.toFloat()
                 mViewWidth = mBuilder.mSliderView.width.toFloat()
                 when (mBuilder.mSlideDirection) {
-                    SlideDirection.UP -> {
+                    Slide.SlideDirection.UP,
+                    Slide.SlideDirection.DOWN,
+                    Slide.SlideDirection.VERTICAL -> {
                         mBuilder.mSliderView.pivotY = 0f
                     }
 
-                    SlideDirection.DOWN -> {
-                        mBuilder.mSliderView.pivotY = 0f
+                    Slide.SlideDirection.LEFT,
+                    Slide.SlideDirection.RIGHT,
+                    Slide.SlideDirection.HORIZONTAL -> {
+                        mBuilder.mSliderView.pivotX = 0f
                     }
                 }
                 createConsumers()
@@ -109,42 +128,61 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
     }
 
     private fun createConsumers() {
-        mVerticalTouchConsumer = VerticalTouchConsumer(mBuilder, this, mAnimationProcessor, slideLength)
-        //        mHorizontalTouchConsumer = new HorizontalTouchConsumer(mBuilder, this, mAnimationProcessor);
+        touchConsumer = SlideTouchConsumer(
+            mBuilder,
+            this,
+            slideUpLength = getSlideLength(SlideDirection.UP),
+            slideDownLength = getSlideLength(SlideDirection.DOWN),
+            slideLeftLength = getSlideLength(SlideDirection.LEFT),
+            slideRightLength = getSlideLength(SlideDirection.RIGHT)
+        )
     }
 
-    val slideLength: Float
-        get() {
-            when (mBuilder.mSlideTo) {
-                SlideTo.SELF -> return mViewHeight
-                SlideTo.PARENT -> when (mBuilder.mSlideDirection) {
-                    SlideDirection.UP -> {
-                        val parent = mBuilder.mSliderView.parent
-                        if (parent != null) {
-                            return mBuilder.mSliderView.top.toFloat()
-                        }
-                        return 0f
+    private fun getSlideLength(dir: SlideDirection): Float {
+        when (mBuilder.mSlideTo) {
+            SlideTo.SELF -> return mViewHeight
+            SlideTo.PARENT -> when (dir) {
+                SlideDirection.UP -> {
+                    val parent = mBuilder.mSliderView.parent
+                    if (parent != null) {
+                        return mBuilder.mSliderView.top.toFloat()
                     }
+                    return 0f
+                }
 
-                    SlideDirection.DOWN -> {
-                        val parent = mBuilder.mSliderView.parent
-                        if (parent != null) {
-                            return ((parent as ViewGroup).height - mBuilder.mSliderView.bottom).toFloat()
-                        }
-                        return 0f
+                SlideDirection.DOWN -> {
+                    val parent = mBuilder.mSliderView.parent
+                    if (parent != null) {
+                        return ((parent as ViewGroup).height - mBuilder.mSliderView.bottom).toFloat()
+                    }
+                    return 0f
+                }
+
+                SlideDirection.LEFT -> {
+                    val parent = mBuilder.mSliderView.parent
+                    if (parent != null) {
+                        return mBuilder.mSliderView.left.toFloat()
                     }
                 }
 
-                SlideTo.SPECIFY -> return mBuilder.mSpecifySlideTo.toFloat()
+                SlideDirection.RIGHT -> {
+                    val parent = mBuilder.mSliderView.parent
+                    if (parent != null) {
+                        return ((parent as ViewGroup).width - mBuilder.mSliderView.right).toFloat()
+                    }
+                    return 0f
+                }
             }
-            return 0f
+
+            SlideTo.SPECIFY -> return mBuilder.mSpecifySlideTo.toFloat()
         }
+        return 0f
+    }
 
     private fun updateToCurrentState() {
         when (mBuilder.mStartState) {
             State.HIDDEN -> hideImmediately()
             State.SHOWED -> showImmediately()
-            else -> {}
         }
     }
 
@@ -212,7 +250,8 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
      */
     fun setAutoSlideDuration(autoSlideDuration: Int) {
         mBuilder.autoSlideDuration(autoSlideDuration)
-        mAnimationProcessor.paramsChanged()
+        // TODO: zhangfei
+//        mAnimationProcessor.paramsChanged()
     }
 
     val autoSlideDuration: Float
@@ -222,15 +261,6 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
          */
         get() = mBuilder.mAutoSlideDuration.toFloat()
 
-
-    val isAnimationRunning: Boolean
-        /**
-         *
-         * Returns running status of animation
-         *
-         * @return true if animation is running
-         */
-        get() = mAnimationProcessor.isAnimationRunning
 
     /**
      *
@@ -264,22 +294,6 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
         show(true)
     }
 
-    var isLoggingEnabled: Boolean
-        /**
-         *
-         * Returns current status of debug logging
-         */
-        get() = mBuilder.mDebug
-        /**
-         *
-         * Turning on/off debug logging
-         *
-         * @param enabled **(default - **false**)**
-         */
-        set(enabled) {
-            mBuilder.loggingEnabled(enabled)
-        }
-
     var isGesturesEnabled: Boolean
         /**
          *
@@ -310,15 +324,8 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
          */
         set(interpolator) {
             mBuilder.interpolator(interpolator)
-            mAnimationProcessor.paramsChanged()
+//            mAnimationProcessor.paramsChanged()
         }
-
-    val slideDirection: SlideDirection?
-        /**
-         *
-         * Returns gravity which used in combination with this SlideUp
-         */
-        get() = mBuilder.mSlideDirection
 
     var isHideKeyboardWhenDisplayed: Boolean
         /**
@@ -367,7 +374,6 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
     fun onSaveInstanceState(savedState: Bundle) {
         savedState.putBoolean(KEY_STATE_SAVED, true)
         savedState.putSerializable(KEY_START_DIRECTION, mBuilder.mSlideDirection)
-        savedState.putBoolean(KEY_DEBUG, mBuilder.mDebug)
         savedState.putSerializable(KEY_STATE, mCurrentState)
         savedState.putInt(KEY_AUTO_SLIDE_DURATION, mBuilder.mAutoSlideDuration)
         savedState.putBoolean(KEY_HIDE_SOFT_INPUT, mBuilder.mHideKeyboard)
@@ -375,123 +381,125 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
 
     //endregion
     private fun hide(immediately: Boolean) {
-        mAnimationProcessor.endAnimation()
-        when (mBuilder.mSlideDirection) {
-            SlideDirection.UP -> if (immediately) {
-                if (mBuilder.mSliderView.height > 0) {
-                    mBuilder.mSliderView.translationY = -mViewHeight
-                    notifyPercentChanged(100f)
-                } else {
-                    mBuilder.mStartState = State.HIDDEN
-                }
-            } else {
-                mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, mBuilder.mSliderView.height.toFloat())
-            }
-
-            SlideDirection.DOWN -> if (immediately) {
-                if (mBuilder.mSliderView.height > 0) {
-                    mBuilder.mSliderView.translationY = mViewHeight
-                    notifyPercentChanged(100f)
-                } else {
-                    mBuilder.mStartState = State.HIDDEN
-                }
-            } else {
-                mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, mBuilder.mSliderView.height.toFloat())
-            }
-        }
+//        mAnimationProcessor.endAnimation()
+//        when (mBuilder.mSlideDirection) {
+//            SlideDirection.UP -> {
+//                if (immediately) {
+//                    if (mBuilder.mSliderView.height > 0) {
+//                        mBuilder.mSliderView.translationY = -mViewHeight
+//                        notifyPercentChanged(100f)
+//                    } else {
+//                        mBuilder.mStartState = State.HIDDEN
+//                    }
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, mBuilder.mSliderView.height.toFloat())
+//                }
+//            }
+//
+//            SlideDirection.DOWN -> {
+//                if (immediately) {
+//                    if (mBuilder.mSliderView.height > 0) {
+//                        mBuilder.mSliderView.translationY = mViewHeight
+//                        notifyPercentChanged(100f)
+//                    } else {
+//                        mBuilder.mStartState = State.HIDDEN
+//                    }
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, mBuilder.mSliderView.height.toFloat())
+//                }
+//            }
+//
+//            SlideDirection.LEFT -> {
+//                if (immediately) {
+//                    if (mBuilder.mSliderView.width > 0) {
+//                        mBuilder.mSliderView.translationX = -mViewWidth
+//                        notifyPercentChanged(100f)
+//                    } else {
+//                        mBuilder.mStartState = State.HIDDEN
+//                    }
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationX, mBuilder.mSliderView.width.toFloat())
+//                }
+//            }
+//
+//            SlideDirection.RIGHT -> {
+//                if (immediately) {
+//                    if (mBuilder.mSliderView.height > 0) {
+//                        mBuilder.mSliderView.translationX = mViewWidth
+//                        notifyPercentChanged(100f)
+//                    } else {
+//                        mBuilder.mStartState = State.HIDDEN
+//                    }
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationX, mBuilder.mSliderView.width.toFloat())
+//                }
+//            }
+//        }
     }
 
     private fun show(immediately: Boolean) {
-        mAnimationProcessor.endAnimation()
-        when (mBuilder.mSlideDirection) {
-            SlideDirection.UP -> {
-                if (immediately) {
-                    if (mBuilder.mSliderView.height > 0) {
-                        mBuilder.mSliderView.translationY = 0f
-                        notifyPercentChanged(0f)
-                    } else {
-                        mBuilder.mStartState = State.SHOWED
-                    }
-                } else {
-                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, 0f)
-                }
-                if (immediately) {
-                    if (mBuilder.mSliderView.height > 0) {
-                        mBuilder.mSliderView.translationY = 0f
-                        notifyPercentChanged(0f)
-                    } else {
-                        mBuilder.mStartState = State.SHOWED
-                    }
-                } else {
-                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, 0f)
-                }
-            }
-
-            SlideDirection.DOWN -> if (immediately) {
-                if (mBuilder.mSliderView.height > 0) {
-                    mBuilder.mSliderView.translationY = 0f
-                    notifyPercentChanged(0f)
-                } else {
-                    mBuilder.mStartState = State.SHOWED
-                }
-            } else {
-                mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, 0f)
-            }
-        }
+//        mAnimationProcessor.endAnimation()
+//        when (mBuilder.mSlideDirection) {
+//            SlideDirection.UP -> {
+//                if (immediately) {
+//                    if (mBuilder.mSliderView.height > 0) {
+//                        mBuilder.mSliderView.translationY = 0f
+//                        notifyPercentChanged(0f)
+//                    } else {
+//                        mBuilder.mStartState = State.SHOWED
+//                    }
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, 0f)
+//                }
+//                if (immediately) {
+//                    if (mBuilder.mSliderView.height > 0) {
+//                        mBuilder.mSliderView.translationY = 0f
+//                        notifyPercentChanged(0f)
+//                    } else {
+//                        mBuilder.mStartState = State.SHOWED
+//                    }
+//                } else {
+//                    mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, 0f)
+//                }
+//            }
+//
+//            SlideDirection.DOWN -> if (immediately) {
+//                if (mBuilder.mSliderView.height > 0) {
+//                    mBuilder.mSliderView.translationY = 0f
+//                    notifyPercentChanged(0f)
+//                } else {
+//                    mBuilder.mStartState = State.SHOWED
+//                }
+//            } else {
+//                mAnimationProcessor.setValuesAndStart(mBuilder.mSliderView.translationY, 0f)
+//            }
+//
+//            SlideDirection.LEFT -> {
+//                // TODO: zhangfei
+//            }
+//
+//            SlideDirection.RIGHT -> {
+//                // TODO: zhangfei
+//            }
+//        }
     }
 
 
     override fun onTouch(v: View, event: MotionEvent): Boolean {
-        if (mAnimationProcessor.isAnimationRunning) return false
+        if (touchConsumer?.isAnimationRunning() == true) return false
         if (!mBuilder.mGesturesEnabled) {
             mBuilder.mSliderView.performClick()
             return true
         }
 
-        val consumed = when (mBuilder.mSlideDirection) {
-            SlideDirection.UP -> mVerticalTouchConsumer?.slideUp(v, event)
-            SlideDirection.DOWN -> mVerticalTouchConsumer?.slideDown(v, event)
-            else -> throw IllegalArgumentException("You are using not supported gravity")
-        } ?: false
+        val consumed = touchConsumer?.onTouch(v, event) ?: false
         if (!consumed) {
             mBuilder.mSliderView.performClick()
         }
         return true
     }
 
-    override fun onAnimationUpdate(animation: ValueAnimator) {
-        val value = animation.animatedValue as Float
-        when (mBuilder.mSlideDirection) {
-            SlideDirection.UP -> onAnimationSlideUp(value)
-            SlideDirection.DOWN -> onAnimationSlideDown(value)
-        }
-    }
-
-    private fun onAnimationSlideUp(value: Float) {
-        Log.d("zhangfei", "onAnimationSlideUp: $value")
-        mBuilder.mSliderView.translationY = value
-//        val visibleDistance = mBuilder.mSliderView.top - mBuilder.mSliderView.y
-//        val percents = (visibleDistance) * 100 / mViewHeight
-//        notifyPercentChanged(percents)
-    }
-
-    private fun onAnimationSlideDown(value: Float) {
-        Log.d("zhangfei", "onAnimationSlideDown: $value")
-        mBuilder.mSliderView.translationY = value
-//        val visibleDistance = mBuilder.mSliderView.y - mBuilder.mSliderView.top
-//        val percents = (visibleDistance) * 100 / mViewHeight
-//        notifyPercentChanged(percents)
-    }
-
-    private val start: Int
-        //    private void onAnimationUpdateStartToEnd(float value) {
-        get() = if (mBuilder.mIsRTL) {
-            mBuilder.mSliderView.right
-        } else {
-            mBuilder.mSliderView.left
-        }
-
-    override fun notifyPercentChanged(percent: Float) {
+    override fun notifyPercentChanged(percent: Float, dir: SlideDirection) {
         val pp = percent.coerceIn(0f, 100f)
         if (pp == 100f) {
 //            mBuilder.mSliderView.visibility = View.GONE
@@ -502,15 +510,12 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
 //                notifyVisibilityChanged(View.VISIBLE)
 //            }
         }
-        if (mAnimationProcessor.slideAnimationTo == 0f && mBuilder.mHideKeyboard) hideSoftInput()
         if (mBuilder.mListeners.isNotEmpty()) {
             for (i in mBuilder.mListeners.indices) {
                 val l = mBuilder.mListeners[i]
                 if (l != null) {
-                    if (l is Listener.Slide) {
-                        l.onSlide(pp)
-                        logValue(i, "onSlide", pp)
-                    }
+                    l.onSlide(pp)
+                    logValue(i, "onSlide", pp)
                 } else {
                     logError(i, "onSlide")
                 }
@@ -523,10 +528,8 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
             for (i in mBuilder.mListeners.indices) {
                 val l = mBuilder.mListeners[i]
                 if (l != null) {
-                    if (l is Listener.Visibility) {
-                        l.onVisibilityChanged(visibility)
-                        logValue(i, "onVisibilityChanged", if (visibility == View.VISIBLE) "VISIBLE" else if (visibility == View.GONE) "GONE" else visibility)
-                    }
+                    l.onVisibilityChanged(visibility)
+                    logValue(i, "onVisibilityChanged", if (visibility == View.VISIBLE) "VISIBLE" else if (visibility == View.GONE) "GONE" else visibility)
                 } else {
                     logError(i, "onVisibilityChanged")
                 }
@@ -538,35 +541,18 @@ class SlideUp internal constructor(private val mBuilder: SlideUpBuilder) : OnTou
         }
     }
 
-    override fun onAnimationStart(animator: Animator) {
-    }
-
-    override fun onAnimationEnd(animator: Animator) {
-    }
-
-    override fun onAnimationCancel(animator: Animator) {
-    }
-
-    override fun onAnimationRepeat(animator: Animator) {
-    }
-
     private fun logValue(listener: Int, method: String, message: Any) {
-        if (mBuilder.mDebug) {
-            Log.e(TAG, String.format("Listener(%1s) (%2$-23s) value = %3\$s", listener, method, message))
-        }
+        Log.d(TAG, String.format("Listener(%1s) (%2$-23s) value = %3\$s", listener, method, message))
     }
 
     private fun logError(listener: Int, method: String) {
-        if (mBuilder.mDebug) {
-            Log.d(TAG, String.format("Listener(%1s) (%2$-23s) Listener is null, skip notification...", listener, method))
-        }
+        Log.e(TAG, String.format("Listener(%1s) (%2$-23s) Listener is null, skip notification...", listener, method))
     }
 
     companion object {
-        private val TAG: String = SlideUp::class.java.simpleName
+        private val TAG: String = Slide::class.java.simpleName
 
         val KEY_START_DIRECTION: String = TAG + "_start_direction"
-        val KEY_DEBUG: String = TAG + "_debug"
         val KEY_STATE: String = TAG + "_state"
         val KEY_AUTO_SLIDE_DURATION: String = TAG + "_auto_slide_duration"
         val KEY_HIDE_SOFT_INPUT: String = TAG + "_hide_soft_input"

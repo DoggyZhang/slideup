@@ -1,4 +1,4 @@
-package com.google.samples.slideup
+package com.google.samples.slide
 
 import android.os.Build
 import android.view.View

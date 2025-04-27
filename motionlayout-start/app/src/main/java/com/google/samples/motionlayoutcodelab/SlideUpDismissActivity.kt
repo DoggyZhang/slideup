@@ -21,8 +21,8 @@ import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.samples.slideup.SlideUp
-import com.google.samples.slideup.SlideUpBuilder
+import com.google.samples.slide.Slide
+import com.google.samples.slide.SlideBuilder
 
 class SlideUpDismissActivity : AppCompatActivity() {
 
@@ -31,23 +31,25 @@ class SlideUpDismissActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_slide_up_dismiss)
 
-        val slideView = findViewById<View>(R.id.v_slide)
-
-        slideView.setOnClickListener {
-            Toast.makeText(this@SlideUpDismissActivity, "Click SlideView", Toast.LENGTH_SHORT).show()
-        }
-
+        makeSlide(findViewById<View>(R.id.v_slide))
+        makeSlide(findViewById<View>(R.id.v_slide2))
 
         val subView = findViewById<View>(R.id.v_sub)
         subView.setOnClickListener {
-            Toast.makeText(this@SlideUpDismissActivity, "Click SubView", Toast.LENGTH_SHORT).show()
+//            Toast.makeText(this@SlideUpDismissActivity, "Click SubView", Toast.LENGTH_SHORT).show()
         }
+    }
 
-        val slideUp = SlideUpBuilder(slideView)
+    private fun makeSlide(slideView: View) {
+        slideView.setOnClickListener {
+//            Toast.makeText(this@SlideUpDismissActivity, "Click SlideView", Toast.LENGTH_SHORT).show()
+        }
+        val slideUp = SlideBuilder(slideView)
             .slideToParent()
-            .SlideDirection(SlideUp.SlideDirection.UP)
-            .StartState(SlideUp.State.SHOWED)
-            .listeners(object : SlideUp.Listener.Events {
+            //.slideDirection(Slide.SlideDirection.LEFT.dir or Slide.SlideDirection.RIGHT.dir)
+            .slideDirection(Slide.SlideDirection.HORIZONTAL)
+            .startState(Slide.State.SHOWED)
+            .listeners(object : Slide.Listener {
                 override fun onVisibilityChanged(visibility: Int) {
                     Log.d("zhangfei", "onVisibilityChanged, visibility:$visibility")
                 }
