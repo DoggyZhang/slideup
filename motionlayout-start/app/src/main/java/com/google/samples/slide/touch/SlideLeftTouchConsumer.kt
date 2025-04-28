@@ -1,7 +1,6 @@
 package com.google.samples.slide.touch
 
 import android.animation.ValueAnimator
-import android.graphics.Rect
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
@@ -22,12 +21,6 @@ class SlideLeftTouchConsumer(
     private var mGoingLeft = false
     private var mGoingRight = false
 
-    private val sRect = Rect()
-    private fun isUpEventInView(view: View, event: MotionEvent): Boolean {
-        view.getHitRect(sRect)
-        return sRect.contains(event.rawX.toInt(), event.rawY.toInt())
-    }
-
     fun slideLeft(touchedView: View?, event: MotionEvent): Boolean {
         Log.d(TAG_SLIDE_TOUCH_CONSUMER, "slideLeft, touchedView: " + touchedView + ", event:" + event.actionMasked)
         try {
@@ -43,8 +36,7 @@ class SlideLeftTouchConsumer(
                 MotionEvent.ACTION_MOVE -> {
                     val difference = event.rawX - mStartPositionX
                     val moveTo = mViewStartPositionX + difference
-                    val slideLength = slideLength
-                    val percents = (abs(moveTo.toDouble()) * 100 / slideLength).toFloat()
+                    val percents = (abs(moveTo) * 100f / slideLength).coerceIn(0f, 100f)
                     calculateDirection(event)
 
                     Log.d(TAG_SLIDE_TOUCH_CONSUMER, "slideLeft(ACTION_MOVE) -> difference: $difference, moveTo:$moveTo, slideLength:$slideLength, percent:$percents")
@@ -60,21 +52,20 @@ class SlideLeftTouchConsumer(
 
                 MotionEvent.ACTION_UP -> {
                     if (abs(mStartPositionX - event.rawX) < touchSlop && abs(mStartPositionY - event.rawY) < touchSlop) {
+                        mNotifier.performClick(event)
                         return false
                     }
-                    val slideAnimationFrom = mBuilder.mSliderView.translationX
-                    if (slideAnimationFrom == mViewStartPositionY) {
-                        return !isUpEventInView(mBuilder.mSliderView, event)
-                    }
-                    val scrollableAreaConsumed = mBuilder.mSliderView.translationX < -slideLength
+                    val difference = event.rawX - mStartPositionX
+                    val moveTo = mViewStartPositionX + difference
+                    val percents = (abs(moveTo) * 100f / slideLength).coerceIn(0f, 100f)
 
-                    Log.d(TAG_SLIDE_TOUCH_CONSUMER, "slideLeft(ACTION_UP) -> slideAnimationFrom: $slideAnimationFrom, mViewStartPositionY:$mViewStartPositionY, mBuilder.mSliderView.translationX:${mBuilder.mSliderView.translationX}")
-                    Log.d(TAG_SLIDE_TOUCH_CONSUMER, "                      mGoingUp: $mGoingLeft, scrollableAreaConsumed:$scrollableAreaConsumed, slideLength:$slideLength")
+                    Log.d(TAG_SLIDE_TOUCH_CONSUMER, "slideLeft(ACTION_UP) -> percents: $percents, mGoingLeft: $mGoingLeft, slideLength:$slideLength")
+                    Log.d(TAG_SLIDE_TOUCH_CONSUMER, "                        mStartPositionX: $mStartPositionX, difference: $difference, moveTo: $moveTo")
 
-                    if (scrollableAreaConsumed && mGoingLeft) {
-                        mAnimationProcessor.setValuesAndStart(slideAnimationFrom, -slideLength)
+                    if (percents > mBuilder.mAutoSlideToEndPercent && mGoingLeft) {
+                        mAnimationProcessor.setValuesAndStart(moveTo, -slideLength)
                     } else {
-                        mAnimationProcessor.setValuesAndStart(slideAnimationFrom, 0f)
+                        mAnimationProcessor.setValuesAndStart(moveTo, 0f)
                     }
                     return true
                 }

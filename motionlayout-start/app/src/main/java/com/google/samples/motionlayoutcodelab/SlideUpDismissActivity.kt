@@ -32,30 +32,53 @@ class SlideUpDismissActivity : AppCompatActivity() {
         setContentView(R.layout.activity_slide_up_dismiss)
 
         makeSlide(findViewById<View>(R.id.v_slide))
-        makeSlide(findViewById<View>(R.id.v_slide2))
-
         val subView = findViewById<View>(R.id.v_sub)
         subView.setOnClickListener {
-//            Toast.makeText(this@SlideUpDismissActivity, "Click SubView", Toast.LENGTH_SHORT).show()
+            Log.d("zhangfei", "subView click")
+        }
+
+        makeSlide2(findViewById<View>(R.id.v_slide2))
+        val subView2 = findViewById<View>(R.id.v_sub2)
+        subView2.setOnClickListener {
+            Log.d("zhangfei", "subView2 click")
         }
     }
 
     private fun makeSlide(slideView: View) {
         slideView.setOnClickListener {
-//            Toast.makeText(this@SlideUpDismissActivity, "Click SlideView", Toast.LENGTH_SHORT).show()
+            Log.d("zhangfei", "slideView click")
         }
         val slideUp = SlideBuilder(slideView)
             .slideToParent()
             //.slideDirection(Slide.SlideDirection.LEFT.dir or Slide.SlideDirection.RIGHT.dir)
-            .slideDirection(Slide.SlideDirection.HORIZONTAL)
-            .startState(Slide.State.SHOWED)
+            .slideDirection(Slide.SlideDirection.VERTICAL)
             .listeners(object : Slide.Listener {
-                override fun onVisibilityChanged(visibility: Int) {
-                    Log.d("zhangfei", "onVisibilityChanged, visibility:$visibility")
-                }
-
                 override fun onSlide(percent: Float) {
                     Log.d("zhangfei", "onSlide, percent:$percent")
+                }
+
+                override fun onSlideToEnd() {
+                    Log.e("zhangfei", "onSlideToEnd")
+                }
+            })
+            .build()
+    }
+
+    private fun makeSlide2(slideView2: View) {
+        slideView2.setOnClickListener {
+            Log.d("zhangfei", "slideView2 click")
+        }
+        val slideUp = SlideBuilder(slideView2)
+            .slideToParent()
+            //.slideDirection(Slide.SlideDirection.LEFT.dir or Slide.SlideDirection.RIGHT.dir)
+            .slideDirection(Slide.SlideDirection.HORIZONTAL)
+            .listeners(object : Slide.Listener {
+                override fun onSlide(percent: Float) {
+                    Log.d("zhangfei", "onSlide, percent:$percent")
+                }
+
+                override fun onSlideToEnd() {
+                    Log.e("zhangfei", "onSlideToEnd")
                 }
             })
             .build()

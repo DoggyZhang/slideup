@@ -7,7 +7,7 @@ import com.google.samples.slide.SlideBuilder
 import com.google.samples.slide.SlideListener
 
 internal class SlideTouchConsumer(
-    val builder: SlideBuilder,
+    private val builder: SlideBuilder,
     notifier: SlideListener,
 
     slideUpLength: Float = 0f,
@@ -21,10 +21,11 @@ internal class SlideTouchConsumer(
     private val slideLeftTouchConsumer = SlideLeftTouchConsumer(builder, notifier, slideLeftLength)
     private val slideRightTouchConsumer = SlideRightTouchConsumer(builder, notifier, slideRightLength)
 
-
+    private var slideDir: SlideDirection? = null
     fun onTouch(v: View, event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                slideDir = null
                 if (SlideDirection.isUp(builder.mSlideDirection.dir)) {
                     slideUpTouchConsumer.slideUp(v, event)
                 }
@@ -43,25 +44,29 @@ internal class SlideTouchConsumer(
             }
 
             MotionEvent.ACTION_MOVE -> {
-                if (SlideDirection.isUp(builder.mSlideDirection.dir)) {
+                if ((slideDir == null || slideDir == SlideDirection.UP) && SlideDirection.isUp(builder.mSlideDirection.dir)) {
                     if (slideUpTouchConsumer.slideUp(v, event)) {
+                        slideDir = SlideDirection.UP
                         return true
                     }
                 }
-                if (SlideDirection.isDown(builder.mSlideDirection.dir)) {
+                if ((slideDir == null || slideDir == SlideDirection.DOWN) && SlideDirection.isDown(builder.mSlideDirection.dir)) {
                     if (slideDownTouchConsumer.slideDown(v, event)) {
+                        slideDir = SlideDirection.DOWN
                         return true
                     }
                 }
 
-                if (SlideDirection.isLeft(builder.mSlideDirection.dir)) {
+                if ((slideDir == null || slideDir == SlideDirection.LEFT) && SlideDirection.isLeft(builder.mSlideDirection.dir)) {
                     if (slideLeftTouchConsumer.slideLeft(v, event)) {
+                        slideDir = SlideDirection.LEFT
                         return true
                     }
                 }
 
-                if (SlideDirection.isRight(builder.mSlideDirection.dir)) {
+                if ((slideDir == null || slideDir == SlideDirection.RIGHT) && SlideDirection.isRight(builder.mSlideDirection.dir)) {
                     if (slideRightTouchConsumer.slideRight(v, event)) {
+                        slideDir = SlideDirection.RIGHT
                         return true
                     }
                 }
@@ -69,28 +74,29 @@ internal class SlideTouchConsumer(
             }
 
             MotionEvent.ACTION_UP -> {
-                if (SlideDirection.isUp(builder.mSlideDirection.dir)) {
+                if (slideDir == SlideDirection.UP && SlideDirection.isUp(builder.mSlideDirection.dir)) {
                     if (slideUpTouchConsumer.slideUp(v, event)) {
                         return true
                     }
                 }
-                if (SlideDirection.isDown(builder.mSlideDirection.dir)) {
+                if (slideDir == SlideDirection.DOWN && SlideDirection.isDown(builder.mSlideDirection.dir)) {
                     if (slideDownTouchConsumer.slideDown(v, event)) {
                         return true
                     }
                 }
 
-                if (SlideDirection.isLeft(builder.mSlideDirection.dir)) {
+                if (slideDir == SlideDirection.LEFT && SlideDirection.isLeft(builder.mSlideDirection.dir)) {
                     if (slideLeftTouchConsumer.slideLeft(v, event)) {
                         return true
                     }
                 }
 
-                if (SlideDirection.isRight(builder.mSlideDirection.dir)) {
+                if (slideDir == SlideDirection.RIGHT && SlideDirection.isRight(builder.mSlideDirection.dir)) {
                     if (slideRightTouchConsumer.slideRight(v, event)) {
                         return true
                     }
                 }
+                slideDir = null
                 return false
             }
         }

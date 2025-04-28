@@ -1,19 +1,21 @@
 package com.google.samples.slide
 
+import android.animation.Animator
 import android.animation.ValueAnimator
 import android.animation.ValueAnimator.AnimatorUpdateListener
 import android.util.Log
 
 class AnimationProcessor(
     private val mBuilder: SlideBuilder,
-    updateListener: AnimatorUpdateListener
+    updateListener: AnimatorUpdateListener,
+    listener: Animator.AnimatorListener
 ) {
     private var mValueAnimator: ValueAnimator? = null
     var slideAnimationTo: Float = 0f
         private set
 
     init {
-        createAnimation(updateListener)
+        createAnimation(updateListener, listener)
     }
 
     fun endAnimation() {
@@ -49,12 +51,12 @@ class AnimationProcessor(
         }
     }
 
-    private fun createAnimation(updateListener: AnimatorUpdateListener) {
+    private fun createAnimation(updateListener: AnimatorUpdateListener, listener: Animator.AnimatorListener) {
         mValueAnimator = ValueAnimator.ofFloat().apply {
             setDuration(mBuilder.mAutoSlideDuration.toLong())
             interpolator = mBuilder.mInterpolator
             addUpdateListener(updateListener)
-            //addListener(listener)
+            addListener(listener)
         }
     }
 }

@@ -1,7 +1,11 @@
 package com.google.samples.slide
 
-interface SlideListener {
-    fun notifyPercentChanged(percent: Float, dir: Slide.SlideDirection)
+import android.view.MotionEvent
 
-    fun notifyVisibilityChanged(visibility: Int)
+interface SlideListener {
+    fun performClick(event: MotionEvent)
+
+    fun notifySlideToEnd()
+
+    fun notifyPercentChanged(percent: Float, dir: Slide.SlideDirection)
 }

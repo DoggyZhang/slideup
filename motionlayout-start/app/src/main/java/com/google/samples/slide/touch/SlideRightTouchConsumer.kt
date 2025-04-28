@@ -22,12 +22,6 @@ class SlideRightTouchConsumer(
     private var mGoingLeft = false
     private var mGoingRight = false
 
-    private val sRect = Rect()
-    private fun isUpEventInView(view: View, event: MotionEvent): Boolean {
-        view.getHitRect(sRect)
-        return sRect.contains(event.rawX.toInt(), event.rawY.toInt())
-    }
-
     fun slideRight(touchedView: View, event: MotionEvent): Boolean {
         Log.d(TAG_SLIDE_TOUCH_CONSUMER, "slideRight, touchedView: " + touchedView + ", event:" + event.actionMasked)
         try {
@@ -43,7 +37,7 @@ class SlideRightTouchConsumer(
                 MotionEvent.ACTION_MOVE -> {
                     val difference = event.rawX - mStartPositionX
                     val moveTo = mViewStartPositionY + difference
-                    val percents = moveTo * 100 / slideLength
+                    val percents = (abs(moveTo) * 100 / slideLength).coerceIn(0f, 100f)
                     calculateDirection(event)
 
                     Log.d(TAG_SLIDE_TOUCH_CONSUMER, "slideRight(ACTION_MOVE) -> difference: $difference, moveTo:$moveTo, slideLength:$slideLength, percent:$percents")
@@ -59,21 +53,20 @@ class SlideRightTouchConsumer(
 
                 MotionEvent.ACTION_UP -> {
                     if (abs(mStartPositionX - event.rawX) < touchSlop && abs(mStartPositionY - event.rawY) < touchSlop) {
+                        mNotifier.performClick(event)
                         return false
                     }
-                    val slideAnimationFrom = mBuilder.mSliderView.translationX
-                    if (slideAnimationFrom == mViewStartPositionY) {
-                        return !isUpEventInView(mBuilder.mSliderView, event)
-                    }
-                    val scrollableAreaConsumed = mBuilder.mSliderView.translationX > slideLength
+                    val difference = event.rawX - mStartPositionX
+                    val moveTo = mViewStartPositionX + difference
+                    val percents = (abs(moveTo) * 100f / slideLength).coerceIn(0f, 100f)
 
-                    Log.d(TAG_SLIDE_TOUCH_CONSUMER, "slideRight(ACTION_UP) -> slideAnimationFrom: $slideAnimationFrom, mViewStartPositionY:$mViewStartPositionY, mBuilder.mSliderView.translationX:${mBuilder.mSliderView.translationX}")
-                    Log.d(TAG_SLIDE_TOUCH_CONSUMER, "                        mGoingDown: $mGoingRight, scrollableAreaConsumed:$scrollableAreaConsumed, slideLength:$slideLength")
+                    Log.d(TAG_SLIDE_TOUCH_CONSUMER, "slideRight(ACTION_UP) -> percents: $percents, mGoingRight: $mGoingRight, slideLength:$slideLength")
+                    Log.d(TAG_SLIDE_TOUCH_CONSUMER, "                         mStartPositionX: $mStartPositionX, difference: $difference, moveTo: $moveTo")
 
-                    if (scrollableAreaConsumed && mGoingRight) {
-                        mAnimationProcessor.setValuesAndStart(slideAnimationFrom, slideLength)
+                    if (percents > mBuilder.mAutoSlideToEndPercent && mGoingRight) {
+                        mAnimationProcessor.setValuesAndStart(moveTo, slideLength)
                     } else {
-                        mAnimationProcessor.setValuesAndStart(slideAnimationFrom, 0f)
+                        mAnimationProcessor.setValuesAndStart(moveTo, 0f)
                     }
                     return true
                 }

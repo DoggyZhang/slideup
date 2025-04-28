@@ -11,30 +11,16 @@ class SlideBuilder(sliderView: View) {
     private var mStateRestored = false
 
     val mSliderView: View = sliderView
-    var mStartState: Slide.State = Slide.State.SHOWED
     var mListeners: MutableList<Slide.Listener?> = ArrayList()
     var mAutoSlideDuration: Int = 300
     var mGesturesEnabled: Boolean = true
     var mHideKeyboard: Boolean = false
     var mInterpolator: TimeInterpolator? = DecelerateInterpolator()
-    var mAlsoScrollView: View? = null
     var mSlideTo: SlideTo = SlideTo.SELF
     var mSlideDirection: SlideDirection = SlideDirection.DOWN
     var mSpecifySlideTo: Int = 0
 
-
-    /**
-     *
-     * Define a start state on screen
-     *
-     * @param startState **(default - **[Slide.State.HIDDEN]**)**
-     */
-    fun startState(startState: Slide.State): SlideBuilder {
-        if (!mStateRestored) {
-            mStartState = startState
-        }
-        return this
-    }
+    var mAutoSlideToEndPercent: Float = 40f //拖动到多少就自动贴底
 
     /**
      *
@@ -124,18 +110,6 @@ class SlideBuilder(sliderView: View) {
         return this
     }
 
-
-    /**
-     *
-     * Provide a [View] that will also trigger slide events on the [Slide].
-     *
-     * @param alsoScrollView the other view that will trigger the slide events
-     */
-    fun slideFromOtherView(alsoScrollView: View?): SlideBuilder {
-        mAlsoScrollView = alsoScrollView
-        return this
-    }
-
     fun slideToSelf(): SlideBuilder {
         mSlideTo = SlideTo.SELF
         return this
@@ -168,9 +142,6 @@ class SlideBuilder(sliderView: View) {
     private fun restoreParams(savedState: Bundle?) {
         if (savedState == null) return
         mStateRestored = savedState.getBoolean(Slide.KEY_STATE_SAVED, false)
-        if (savedState.getSerializable(Slide.KEY_STATE) != null) {
-            mStartState = (savedState.getSerializable(Slide.KEY_STATE) as? Slide.State) ?: Slide.State.SHOWED
-        }
         if (savedState.getSerializable(Slide.KEY_START_DIRECTION) != null) {
             mSlideDirection = (savedState.getSerializable(Slide.KEY_START_DIRECTION) as? SlideDirection) ?: SlideDirection.UP
         }
